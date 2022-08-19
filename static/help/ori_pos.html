@@ -1,0 +1,29 @@
+<!-- Modal -->
+<div class="modal fade" id="ori_pos_modal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="exampleModalLabel">Origin position</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                This is the location of the shovel when it is stopped by the micro-switch (see figure below for
+                illustration). To measure this position:
+                <ul>
+                    <li>- send the shovel to the origin using the following command: "go to origin 2 2"
+                    </li>
+                    <li>
+                        - once the shovel is stopped, record the absolute shovel position by reading the value on the
+                        metric scale fixed on the launcher with the help of the indicator attached to the shovel.</li>
+                    <li>- store the measured value (xx.xx) in the micro-controller flash memory using the command "set
+                        origin position".</li>
+                </ul>
+                <br><img alt="Origin position" src="/static/images/help/Origin_position.png" decoding="async"
+                    style="max-width: 100%">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,33 @@
+<!-- Modal -->
+<div class="modal fade" id="photo_pos_modal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="exampleModalLabel">Photodiode position</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>The photodiode position corresponds to the location of the shovel when this one is stopped at the
+                    photo-diode/photo-gate, see the figure below for illustration. The procedure to obtain this position
+                    is the following:
+                <ul>
+                    <li>- locate the shovel beyond (in the forward direction) the photo-gate and laser
+                        location. This can be achieved by using the command "move forward", as before.
+                    </li>
+                    <li>
+                        - send the shovel to the photodiode using the command "move to photodiode", e.g., "move to
+                        photodiode
+                        2 2" (to use a small speed of 2 cm/s) </li>
+                    <li>- once the shove is stopped record the position on the metric
+                        scale and store it in the micro-controller using the command "set photodiode position".</li>
+                </ul>
+                </p>
+                <br><img alt="Photodiode position" src="/static/images/help/Photodiode_position.png" decoding="async"
+                style="max-width: 100%">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>

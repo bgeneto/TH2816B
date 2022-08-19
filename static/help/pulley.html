@@ -1,0 +1,55 @@
+<!-- Modal -->
+<div class="modal fade" id="pulley_modal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="exampleModalLabel">Pulley diameter</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>The diameter of the pulley that is attached to the step-motor is used to
+                    calibrate the displacement of the shovel. A good initial guess can be obtained by measuring its
+                    diameter
+                    directly, as shown in the figure below. After storing this parameter in the micro-controller a more
+                    accurate
+                    calibration should be performed, described as the following:</p>
+                <ul>
+                    <li>
+                        - move the shovel to the origin by sending the command "go to origin 2 2"
+                    </li>
+                    <li>- use the command "move forward" and request a displacement of 40 cm, e.g., "move forward 40 2
+                        2" (speed of 2 cm/s is slow enough to guarantee a good calibration)
+                    </li>
+                    <li>- check how much was the actual displacement: reached position - origin position
+                    </li>
+                    <li>- if the displacement is different then the requested one (by more than 1 mm) scale linearly the
+                        pulley
+                        diameter to match the actual displacement with the requested one by using the formula:
+                        <br>
+                        New pulley diameter = Old pulley diameter x (Actual displacement / Requesteddisplacement)
+                        <br>
+                    </li>
+                    <li>
+                        - store the new "pulley diameter" in the micro-controller by using the command "set pulley
+                        diameter"
+                    </li>
+                    <li>
+                        - resend the shovel back to the origin using the command "go to origin 2 2"
+                    </li>
+                    <li>- check the correctness made by using again the command "move forward" and request a
+                        displacement
+                        of 40 cm.
+                        This
+                        time the reached position should corresponds to a displacement of 40 cm.
+                    </li>
+                </ul>
+                </p>
+                <br><img alt="Maximum position" src="/static/images/help/Pulley_diameter.png" decoding="async"
+                    style="max-width: 100%">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
