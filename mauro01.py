@@ -60,8 +60,10 @@ class ColorPrint:
 
 
 class Board(Enum):
-    UNO = 14
-    MEGA = 54
+    UNO = 14  # number of digital pins
+    MEGA = 54  # number of digital pins
+    ON = 1    # digital pin on
+    OFF = 0   # digital pin off
 
 
 class ArduinoConnection:
@@ -72,22 +74,22 @@ class ArduinoConnection:
     '''
 
     def __init__(self, name, model, id=1):
-        ColorPrint.print_info( "---------------------------------------------")
+        ColorPrint.print_info("---------------------------------------------")
         ColorPrint.print_info(f" Searching '{name}' device...                ")
-        ColorPrint.print_info( "---------------------------------------------")
+        ColorPrint.print_info("---------------------------------------------")
         self.name = name
         self.model = model
         self.id = id
-        self.pins = [] 
+        self.pins = []
         self.ser = self.connection()
 
     def connection(self):
         '''instantiate pymata4'''
         ser = pymata4.Pymata4(arduino_instance_id=self.id,
                               arduino_wait=5)
-        ColorPrint.print_pass( "---------------------------------------------")
+        ColorPrint.print_pass("---------------------------------------------")
         ColorPrint.print_pass(f" Device '{self.name}' connected successfully ")
-        ColorPrint.print_pass( "---------------------------------------------")
+        ColorPrint.print_pass("---------------------------------------------")
 
         return ser
 
@@ -129,6 +131,23 @@ class ArduinoConnection:
             self.pins.insert(p, pin_number)
             # set all pins as digital output
             self.ser.set_pin_mode_digital_output(pin_number)
+            self.ser.digital_write(pin_number, OFF)
+
+    def turn(self, onoff, selected_pins, wait=0):
+        '''turn on selected pins and turn off all others.
+           turn off selected pins and turn on all other pins.
+        '''
+        status = {0: 'OFF', 1: 'ON'}
+        for pin in range(len(self.pins)):
+            if pin in selected_pins:
+                ColorPrint.print_info("Turning {} {} {}\n".format(
+                    status[onoff], self.name, pin))
+                self.ser.digital_write(self.pins[pin], onoff)
+            else:
+                self.ser.digital_write(self.pins[pin], ~onoff)
+            time.sleep(0.2)
+        time.sleep(wait)
+        return
 
 
 class SerialConnection:
@@ -138,9 +157,9 @@ class SerialConnection:
                  stopbits=serial.STOPBITS_ONE,
                  bytesize=serial.EIGHTBITS,
                  timeout=1):
-        ColorPrint.print_info( "---------------------------------------------")
+        ColorPrint.print_info("---------------------------------------------")
         ColorPrint.print_info(f" Searching '{name}' device...                ")
-        ColorPrint.print_info( "---------------------------------------------")
+        ColorPrint.print_info("---------------------------------------------")
         # generic device parameters
         self.name = name
         self.ser = None
@@ -193,9 +212,9 @@ class SerialConnection:
                         f"***ERROR: Serial port ({self.name}) not ready, timed out!")
                     raise TimeoutError
 
-        ColorPrint.print_pass( "---------------------------------------------")
+        ColorPrint.print_pass("---------------------------------------------")
         ColorPrint.print_pass(f" Device '{self.name}' connected successfully ")
-        ColorPrint.print_pass( "---------------------------------------------")
+        ColorPrint.print_pass("---------------------------------------------")
 
     def close(self):
         '''Stop and close serial monintoring thread'''
@@ -220,6 +239,7 @@ class SerialReaderProtocolLine(LineReader):
     def handle_line(self, line):
         """New line waiting to be processed"""
         #sys.stdout.write(f'Line received: {repr(line)}')
+        line = str(int(round(time.time() * 1000))) + ',' + line
         self.received_lines.append(line)
 
     def connection_lost(self, exc):
@@ -229,40 +249,54 @@ class SerialReaderProtocolLine(LineReader):
 
 
 def shutdown():
+    '''ends serial connections and close active threads'''
     try:
+        device['lcr'].protocol.write_line('TRIG:SOUR MAN')
         device['lcr'].close()
-        for d in ['valves','sensors']:
+        for d in ['valves', 'sensors']:
             # turn off pin energy
             for pin in device[d].pins:
                 device[d].ser.digital_write(pin, 0)
-                pass 
+                pass
             device[d].ser.shutdown()
     except Exception as e:
-        #traceback.print_exc(e)
+        # traceback.print_exc(e)
         pass
 
 
 if __name__ == '__main__':
 
+    ON = 1
+    OFF = 2
+    ATTEMPTS = 3
     device = {}
-    max_retries = 3
-
-    # LCR TH2816B connection
-    dname = 'lcr'
     errmsg = "{} device not found or serial port in use!"
-    try:
-        device[dname] = SerialConnection(dname, "/dev/serial0", timeout=1)
-        device[dname].connect()
-    except:
+
+    # LCR TH2816B connection attempts
+    dname = 'lcr'
+    for _ in range(ATTEMPTS):
+        try:
+            device[dname] = SerialConnection(dname, "/dev/serial0", timeout=1)
+            device[dname].connect()
+            # set LCR trigger to manual/software controlled mode
+            time.sleep(0.25)
+            device[dname].protocol.write_line('TRIG:SOUR INT')
+            time.sleep(0.25)
+            device[dname].protocol.write_line('APER FAST')
+            break
+        except:
+            ColorPrint.print_warn(errmsg.format(dname))
+            time.sleep(1)
+    else:
         ColorPrint.print_fail(errmsg.format(dname))
         shutdown()
         sys.exit(1)
 
     time.sleep(1)
 
-    # arduino connection
+    # arduino connection attempts
     dname = 'sensors'
-    for c in range(max_retries):
+    for _ in range(ATTEMPTS):
         try:
             device[dname] = ArduinoConnection(dname, Board.UNO, id=2)
             break
@@ -275,10 +309,10 @@ if __name__ == '__main__':
         sys.exit(1)
 
     time.sleep(1)
-    
-    # arduino connection
+
+    # arduino connection attempts
     dname = 'valves'
-    for t in range(max_retries):
+    for t in range(ATTEMPTS):
         try:
             device[dname] = ArduinoConnection(dname, Board.MEGA, id=1)
             break
@@ -290,39 +324,45 @@ if __name__ == '__main__':
         shutdown()
         sys.exit(1)
 
-    # configure board used pins 
-    sensors_board_pins = ['A0','A1','A2','A3','A4','A5','D2','D3']
+    # configure board used pins
+    sensors_board_pins = ['A0', 'A1', 'A2', 'A3', 'A4', 'A5', 'D2', 'D3']
     device['sensors'].configure_pins(sensors_board_pins)
-    
-    valves_board_pins = ['D2','D3','D4','D5','D6']
+
+    valves_board_pins = ['D2', 'D3', 'D4', 'D5', 'D6']
     device['valves'].configure_pins(valves_board_pins)
 
+    time.sleep(1)
+
+    # loop parameters
+    dt = 1/10.
+    swtime = 2
+    
     # turn on/off valves
-    time.sleep(4)
-    device['valves'].ser.digital_write(device['valves'].pins[0], 1)
-    device['valves'].ser.digital_write(device['valves'].pins[1], 0)
-    time.sleep(3)
-    print("Alternating valves...")
-    device['valves'].ser.digital_write(device['valves'].pins[0], 0)
-    device['valves'].ser.digital_write(device['valves'].pins[1], 1)
+    dev = device['valves']
+    for valve in range(len(dev.pins[0:1])):
+        print("Alternating valves...")
+        dev.turn(ON, [valve])
 
-    # turn on/off sensors
-    time.sleep(3)
-    print("Alternating sensors...")
-    device['sensors'].ser.digital_write(device['sensors'].pins[6], 1)
-    device['sensors'].ser.digital_write(device['sensors'].pins[7], 0)
-    time.sleep(3)
-    device['sensors'].ser.digital_write(device['sensors'].pins[6], 0)
-    device['sensors'].ser.digital_write(device['sensors'].pins[7], 1)
+        # number of sensor reading cycles
+        NUM_CYCLES = 4
 
-
-    try:
-        while True:
-            pass
-    except KeyboardInterrupt:
-        ColorPrint.print_fail("\nProgram interrupted")
-        print(device['lcr'].protocol.received_lines)
-    finally:
-        shutdown()
+        # turn on/off sensors
+        print("Alternating sensors...")
+        dev = device['sensors']
+        try:
+            for __ in range(NUM_CYCLES):
+                for sensor in range(len(dev.pins)):
+                    fname = f"v{valve}s{sensor}.csv"
+                    dev.turn(ON, [sensor])
+                    device['lcr'].protocol.received_lines = []
+                    for _ in range(int(swtime/dt)):
+                        time.sleep(dt)
+                    else:
+                        with open(fname, 'a', encoding='utf-8') as f:
+                            f.write('\n'.join(device['lcr'].protocol.received_lines))
+        except KeyboardInterrupt:
+            ColorPrint.print_fail("\nProgram interrupted")
+        finally:
+            shutdown()
 
     sys.exit(0)
