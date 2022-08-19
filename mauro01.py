@@ -159,10 +159,11 @@ class ArduinoConnection:
         '''turn on selected pins at pin_pos and turn off all others'''
         for i, pin in enumerate(self.pins):
             if i in pin_pos:
-                ColorPrint.print_info(f"Turning ON {self.name} {pin}\n")
+                ColorPrint.print_info(f"Turning ON {self.name} {i}")
                 self.ser.digital_write(pin, ON)
             else:
                 self.ser.digital_write(pin, OFF)
+
             time.sleep(0.1)  # wait before turning off/on another GPIO pin
         time.sleep(wait)
         return
@@ -174,13 +175,12 @@ class ArduinoConnection:
         reading_rate = 1/10.0
 
         # LCR meter sampling duration (in seconds) per sensor
-        reading_time = 3
+        reading_time = 2
 
         # LCR meter primary and secondary parameters
         cols = ['primary', 'secondary']
 
         # received data lists
-        rx_lst = lcr_meter.protocol.received_lines
         str_lst = ['']*len(sensors)
 
         try:
@@ -191,16 +191,14 @@ class ArduinoConnection:
                     self.switch_onoff([sensor])
                     time.sleep(1)
                     # now we empty the input buffer list
-                    rx_lst = []
+                    lcr_meter.protocol.received_lines = []
                     # wait 'reading_time' seconds
                     for __ in range(int(reading_time/reading_rate)):
                         time.sleep(reading_rate)
-                    rx_str = '\n'.join(rx_lst) + '\n'
+                    rx_str = '\n'.join(lcr_meter.protocol.received_lines) + '\n'
                     str_lst[sensor] += rx_str
         except KeyboardInterrupt:
             ColorPrint.print_fail("\nProgram interrupted")
-        finally:
-            shutdown()
 
         # format the data into a list of dataframes
         lst_df = []
@@ -367,7 +365,7 @@ def create_output_dir():
         try:
             os.makedirs(output_dir)
         except Exception as _:
-            ColorPrint.print_fail(f"Unable to create output directory!")
+            ColorPrint.print_fail("Unable to create output directory!")
             shutdown()
             sys.exit(1)
 
@@ -376,9 +374,6 @@ def create_output_dir():
 
 def experiment():
     '''make requried connections and start the experiment'''
-
-    # store retrieved data in a list of dataframes
-    data = []
 
     # configure board pins
     sensors_board_pins = ['A0', 'A1', 'A2', 'A3', 'A4', 'A5', 'D2', 'D3']
@@ -390,11 +385,18 @@ def experiment():
     # wait before starting a measurement
     time.sleep(1)
 
+    # choose valves to use 
+
+    valves =  range(2) # range(len(valves_arduino.pins))
     # choose sensors to use
-    sensors = range(0, 7)
+    sensors = range(len(sensors_arduino.pins))
+
 
     # experiment cycle
     cycles = 4  # number of sensor reading cycles
+
+    # store retrieved data in a list of dataframes
+    data = [None]*len(valves_arduino.pins)
 
     valve = 0
     valves_arduino.switch_onoff([valve])
@@ -408,19 +410,22 @@ def experiment():
     output_dir = create_output_dir()
 
     # save data to several csv files
-    for valve in data:
-        for param in ['primary', 'secondary']:
+    for valve in valves:
+        #for param in ['primary', 'secondary']:
+            #print(data[valve][0][param])
             # write two files with all sensors data
-            sensors_df = pd.concat(
-                [df_sensors[param] for df_sensors in data[valve]], ignore_index=True, axis=1)
-            fname = os.path.join(
-                output_dir, f'v{valve}_{param}_all_sensors.csv')
-            sensors_df.to_csv(fname, index=False)
-        for sensor in data[valve]:
+            #sensors_df = pd.concat(
+            #    [x[param] for x in data[valve][:]], ignore_index=True, axis=1)
+            #fname = os.path.join(
+            #    output_dir, f'v{valve}_{param}_all_sensors.csv')
+            #sensors_df.to_csv(fname, index=False)
+        for sensor in sensors:
             # write one
-            fname = os.path.join(output_dir, f'v{valve}_s{sensor}.csv')
+            fname = os.path.join(output_dir, f'v{valve}s{sensor}.csv')
             data[valve][sensor].to_csv(fname, index=False)
 
+    shutdown()
+    
     return
 
 
