@@ -16,6 +16,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+import os
 import sys
 import time
 import traceback
@@ -173,15 +174,10 @@ class ArduinoConnection:
         reading_rate = 1/10.0
 
         # LCR meter sampling duration (in seconds) per sensor
-        reading_time = 2
+        reading_time = 3
 
         # LCR meter primary and secondary parameters
         cols = ['primary', 'secondary']
-
-        # store time info
-        timestr = time.strftime("%Y%m%dT%H%M%S")
-
-        print("Alternating sensors...")
 
         # received data lists
         rx_lst = lcr_meter.protocol.received_lines
@@ -358,8 +354,28 @@ def shutdown():
     return
 
 
+def create_output_dir():
+    # store time info
+    timestr = time.strftime("%Y%m%dT%H%M%S")
+
+    # create output directory if not exists
+    output_dir = os.path.abspath(os.path.join('experiments', timestr))
+    if not os.path.exists(output_dir):
+        try:
+            os.makedirs(output_dir)
+        except Exception as _:
+            ColorPrint.print_fail(f"Unable to create output directory!")
+            shutdown()
+            sys.exit(1)
+
+    return output_dir
+
+
 def experiment():
     '''make requried connections and start the experiment'''
+
+    # store retrieved data in a list of dataframes
+    data = []
 
     # configure board pins
     sensors_board_pins = ['A0', 'A1', 'A2', 'A3', 'A4', 'A5', 'D2', 'D3']
@@ -377,11 +393,22 @@ def experiment():
     # experiment cycle
     cycles = 4  # number of sensor reading cycles
 
-    valves_arduino.switch_onoff([0])
-    rx_data = sensors_arduino.loop(sensors, cycles)
+    valve = 0
+    valves_arduino.switch_onoff([valve])
+    data[valve] = sensors_arduino.loop(sensors, cycles)
 
-    valves_arduino.switch_onoff([1])
-    rx_data = sensors_arduino.loop(sensors, cycles)
+    valve = 1
+    valves_arduino.switch_onoff([valve])
+    data[valve] = sensors_arduino.loop(sensors, cycles)
+
+    # create output directory if not exists
+    output_dir = create_output_dir()
+
+    # save data to csv file
+    for valve in data:
+        for sensor in data[valve]:
+            fname = os.path.join(output_dir, f'v{valve}_s{sensor}.csv')
+            data[valve][sensor].to_csv(fname, index=False)
 
     return
 
@@ -393,16 +420,13 @@ if __name__ == '__main__':
     OFF = 2
 
     # LCR TH2816B connection
-    #lcr = connection_attempt('lcr', "/dev/serial0", timeout=1)
     lcr_meter = SerialConnection('lcr', "/dev/serial0", timeout=1)
 
     # arduino connection
     valves_arduino = ArduinoConnection('valves', Board.MEGA, id=1)
     sensors_arduino = ArduinoConnection('sensors', Board.UNO, id=2)
 
-    #devices['valves'] = connection_attempt
-    #devices['sensors'] = connection_attempt('sensors', Board.UNO, id=2)
-
+    # run the experiment
     experiment()
 
     sys.exit(0)
