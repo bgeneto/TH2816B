@@ -355,11 +355,14 @@ def shutdown():
 
 
 def create_output_dir():
-    # store time info
-    timestr = time.strftime("%Y%m%dT%H%M%S")
+    # base output directory
+    base_dir = 'experiments'
+
+    # date and time as subdirectory
+    timestr = time.strftime("%Y-%m-%d %H%M%S")
 
     # create output directory if not exists
-    output_dir = os.path.abspath(os.path.join('experiments', timestr))
+    output_dir = os.path.abspath(os.path.join(base_dir, timestr))
     if not os.path.exists(output_dir):
         try:
             os.makedirs(output_dir)
@@ -404,9 +407,17 @@ def experiment():
     # create output directory if not exists
     output_dir = create_output_dir()
 
-    # save data to csv file
+    # save data to several csv files
     for valve in data:
+        for param in ['primary', 'secondary']:
+            # write two files with all sensors data
+            sensors_df = pd.concat(
+                [df_sensors[param] for df_sensors in data[valve]], ignore_index=True, axis=1)
+            fname = os.path.join(
+                output_dir, f'v{valve}_{param}_all_sensors.csv')
+            sensors_df.to_csv(fname, index=False)
         for sensor in data[valve]:
+            # write one
             fname = os.path.join(output_dir, f'v{valve}_s{sensor}.csv')
             data[valve][sensor].to_csv(fname, index=False)
 
