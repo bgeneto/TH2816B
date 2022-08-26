@@ -13,8 +13,7 @@ import os
 import socket
 import sys
 import time
-from connections import *
-from colorprint import ColorPrint
+from devices import *
 from configparser import ConfigParser
 
 import tornado.gen
@@ -32,8 +31,8 @@ __email__ = "b g e n e t o @ g m a i l d o t c o m"
 __copyright__ = "Copyright 2022, Bernhard Enders"
 __license__ = "GPL"
 __status__ = "Development"
-__version__ = "1.0.1"
-__date__ = "20220815"
+__version__ = "1.1.0"
+__date__ = "20220826"
 
 
 clients = []
@@ -213,27 +212,21 @@ if __name__ == '__main__':
     # setup websockets with ip and port
     setup_ws(**ws_params)
 
-    # start the serial workers in background (as a deamon)
-    try:
-        ser = serial.Serial(**ser_params)
-    except:
-        ColorPrint.print_fail('LCR meter not found or serial port in use')
-        sys.exit(1)
-    sp = serialworker.SerialProcess(input_queue, output_queue, ser)
-    sp.daemon = True
-    sp.start()
+    # global constants
+    ON = 1
+    OFF = 2
 
-    # arduino firmata connections...
-    try:
-        sensors_board = ArduinoConnection('sensors', Board.MEGA, id=1)
-    except:
-        ColorPrint.print_fail('Sensors board not found or in use')
-        sys.exit(1)
-    try:
-        valves_board = ArduinoConnection('valves', Board.UNO, id=2)
-    except:
-        ColorPrint.print_fail('Valves board not found or in use')
-        pass  # sys.exit(1)
+    # # LCR TH2816B connection
+    # lcr_meter = SerialConnection('lcr', "/dev/serial0", timeout=1)
+    # lcr_meter.daemon = True
+    # lcr_meter.start()
+
+    # # arduino connection
+    # valves_arduino = ArduinoConnection('valves', Board.MEGA, id=1)
+    # sensors_arduino = ArduinoConnection('sensors', Board.UNO, id=2)
+
+    # # run the experiment
+    # experiment()
 
     # tornado.options.parse_command_line()
     handlers = [
@@ -264,8 +257,8 @@ if __name__ == '__main__':
     finally:
         input_queue.close()
         output_queue.close()
-        sp.terminate()
-        sp.join()
+        lcr_meter.terminate()
+        lcr_meter.join()
         scheduler.stop()
         http_server.stop()
         # for handler in handlers:

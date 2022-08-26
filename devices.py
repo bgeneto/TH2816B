@@ -33,8 +33,8 @@ __maintainer__ = "Bernhard Enders"
 __email__ = "b g e n e t o @ g m a i l d o t c o m"
 __copyright__ = "Copyright 2022, Bernhard Enders"
 __license__ = "GPL"
-__version__ = "1.1.1"
-__date__ = "20220826"
+__version__ = "1.1.0"
+__date__ = "20220825"
 __status__ = "Development"
 
 
@@ -422,22 +422,3 @@ def experiment():
             data[valve][sensor].to_csv(fname, index=False)
 
     return
-
-
-if __name__ == '__main__':
-
-    # global constants
-    ON = 1
-    OFF = 2
-
-    # LCR TH2816B connection
-    lcr_meter = SerialConnection('lcr', "/dev/serial0", timeout=1)
-
-    # arduino connection
-    valves_arduino = ArduinoConnection('valves', Board.MEGA, id=1)
-    sensors_arduino = ArduinoConnection('sensors', Board.UNO, id=2)
-
-    # run the experiment
-    experiment()
-
-    sys.exit(0)

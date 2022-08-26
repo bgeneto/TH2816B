@@ -56,10 +56,14 @@ $(function () {
             menu: {
               pages: 'Pages',
               index: 'TH2816B I/O',
-              page1: 'Experimento',
-              page2: 'Page 2'
+              page1: 'Connection',
+              page2: 'Experiment'
             },
             page1: {
+              title: 'Connect devices',
+              button: 'Connect'
+            },
+            page2: {
               title: 'Experiment Config',
               num_sensors: 'Number of Sensors',
               duration: 'Duration of each sensor reading',
@@ -105,10 +109,14 @@ $(function () {
             menu: {
               pages: 'Páginas',
               index: 'TH2816B E/S',
-              page1: 'Experimento',
-              page2: 'Calibração 2'
+              page1: 'Conexão',
+              page2: 'Experimento'
             },
             page1: {
+              title: 'Conectar dispositivos',
+              button: 'Conectar'
+            },
+            page2: {
               title: 'Configuração do Experimento',
               num_sensors: 'Número de sensores',
               duration: 'Duração de leitura cada sensor',
