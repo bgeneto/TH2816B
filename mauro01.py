@@ -16,6 +16,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+import json
 import os
 import sys
 import time
@@ -33,8 +34,8 @@ __maintainer__ = "Bernhard Enders"
 __email__ = "b g e n e t o @ g m a i l d o t c o m"
 __copyright__ = "Copyright 2022, Bernhard Enders"
 __license__ = "GPL"
-__version__ = "1.1.1"
-__date__ = "20220826"
+__version__ = "1.1.2"
+__date__ = "20220829"
 __status__ = "Development"
 
 
@@ -79,7 +80,7 @@ class ArduinoConnection:
 
     def __init__(self, name, model, id=1):
         ColorPrint.print_info("---------------------------------------------")
-        ColorPrint.print_info(f" Searching '{name}' device...                ")
+        ColorPrint.print_info(f" Searching '{name}' device...               ")
         ColorPrint.print_info("---------------------------------------------")
         self.name = name
         self.model = model
@@ -93,7 +94,7 @@ class ArduinoConnection:
         ser = pymata4.Pymata4(arduino_instance_id=self.id,
                               arduino_wait=wait)
         ColorPrint.print_pass("---------------------------------------------")
-        ColorPrint.print_pass(f" Device '{self.name}' connected successfully ")
+        ColorPrint.print_pass(f" Device '{self.name}' connected successfully")
         ColorPrint.print_pass("---------------------------------------------")
 
         return ser
@@ -172,41 +173,51 @@ class ArduinoConnection:
         '''loop through all the selected sensors'''
 
         # LCR meter sampling rate
-        reading_rate = 1/10.0
+        #reading_rate = 1/10.0
 
         # LCR meter sampling duration (in seconds) per sensor
         reading_time = 2
 
         # LCR meter primary and secondary parameters
-        cols = ['primary', 'secondary']
+        cols = {'primary': [], 'secondary': []}
+
+        # data structures to store the readings
+        sensors_lst = [f'S{idx}' for idx in sensors]
+        sensors_dict = {key: cols for key in sensors_lst}
 
         # received data lists
-        str_lst = ['']*len(sensors)
+        #str_lst = ['']*len(sensors)
 
-        try:
-            while count > 0:
-                count = count - 1
-                for sensor in sensors:
-                    # first thing is to turn on the sensor and wait for it to settle
-                    self.switch_onoff([sensor])
-                    time.sleep(1)
-                    # now we empty the input buffer list
-                    lcr_meter.protocol.received_lines = []
-                    # wait 'reading_time' seconds
-                    for __ in range(int(reading_time/reading_rate)):
-                        time.sleep(reading_rate)
-                    rx_str = '\n'.join(lcr_meter.protocol.received_lines) + '\n'
-                    str_lst[sensor] += rx_str
-        except KeyboardInterrupt:
-            ColorPrint.print_fail("\nProgram interrupted")
+        while count > 0:
+            count = count - 1
+            for sensor in sensors:
+                # first thing is to turn on the sensor and wait for it to settle
+                self.switch_onoff([sensor])
+                time.sleep(1)
+                # now we empty the input buffer list
+                lcr_meter.protocol.received_lines = []
+                # wait 'reading_time' seconds
+                # for __ in range(int(reading_time/reading_rate)):
+                #    time.sleep(reading_rate)
+                time.sleep(reading_time)
+                lines = lcr_meter.protocol.received_lines
+                for line in lines:
+                    pri, sec = line.split(',')
+                    sensors_dict[f'S{sensor}']['primary'].append(
+                        float(pri))
+                    sensors_dict[f'S{sensor}']['secondary'].append(
+                        float(sec))
+                # rx_str = '\n'.join(
+                #    lcr_meter.protocol.received_lines) + '\n'
+                #str_lst[sensor] += rx_str
 
         # format the data into a list of dataframes
-        lst_df = []
-        for pos, data in enumerate(str_lst):
-            lst_df.insert(pos, pd.read_csv(
-                StringIO(data), sep=",", header=None, names=cols))
+        #lst_df = []
+        # for pos, data in enumerate(str_lst):
+        #    lst_df.insert(pos, pd.read_csv(
+        #        StringIO(data), sep=",", header=None, names=cols))
 
-        return lst_df
+        return sensors_dict
 
 
 class SerialConnection:
@@ -220,7 +231,7 @@ class SerialConnection:
                  timeout=1):
 
         ColorPrint.print_info("---------------------------------------------")
-        ColorPrint.print_info(f" Searching '{name}' device...                ")
+        ColorPrint.print_info(f" Searching '{name}' device...               ")
         ColorPrint.print_info("---------------------------------------------")
 
         # generic device parameters
@@ -276,7 +287,7 @@ class SerialConnection:
                     raise TimeoutError
 
         ColorPrint.print_pass("---------------------------------------------")
-        ColorPrint.print_pass(f" Device '{self.name}' connected successfully ")
+        ColorPrint.print_pass(f" Device '{self.name}' connected successfully")
         ColorPrint.print_pass("---------------------------------------------")
 
     def connection_attempt(self):
@@ -349,15 +360,15 @@ def shutdown():
             device.ser.shutdown()
     except Exception as exc:
         traceback.print_exc(exc)
-    return
 
 
 def create_output_dir():
+    '''create data output directory'''
     # base output directory
     base_dir = 'experiments'
 
     # date and time as subdirectory
-    timestr = time.strftime("%Y-%m-%d %H%M%S")
+    timestr = time.strftime("%Y-%m-%d %Hh%Mm%Ss")
 
     # create output directory if not exists
     output_dir = os.path.abspath(os.path.join(base_dir, timestr))
@@ -372,61 +383,55 @@ def create_output_dir():
     return output_dir
 
 
-def experiment():
-    '''make requried connections and start the experiment'''
-
-    # configure board pins
-    sensors_board_pins = ['A0', 'A1', 'A2', 'A3', 'A4', 'A5', 'D2', 'D3']
-    sensors_arduino.configure_pins(sensors_board_pins)
-
-    valves_board_pins = ['D2', 'D3', 'D4', 'D5', 'D6']
-    valves_arduino.configure_pins(valves_board_pins)
+def run(scycles, vcycles):
+    '''run the experiment'''
 
     # wait before starting a measurement
     time.sleep(1)
 
-    # choose valves to use 
+    # choose valves to use (default: all)
+    valves = range(len(valves_arduino.pins))
 
-    valves =  range(2) # range(len(valves_arduino.pins))
-    # choose sensors to use
+    # choose sensors to use (default: all)
     sensors = range(len(sensors_arduino.pins))
 
+    # store retrieved data in a list of dictionaries
+    data = []
+    valves_lst = [f'V{idx}' for idx in valves]
+    valves_dict = {key: {} for key in valves_lst}
 
-    # experiment cycle
-    cycles = 4  # number of sensor reading cycles
-
-    # store retrieved data in a list of dataframes
-    data = [None]*len(valves_arduino.pins)
-
-    valve = 0
-    valves_arduino.switch_onoff([valve])
-    data[valve] = sensors_arduino.loop(sensors, cycles)
-
-    valve = 1
-    valves_arduino.switch_onoff([valve])
-    data[valve] = sensors_arduino.loop(sensors, cycles)
+    # main experiment loop
+    for _ in range(vcycles):
+        for valve in valves:
+            valves_arduino.switch_onoff([valve])
+            valves_dict[f'V{valve}'] = sensors_arduino.loop(sensors, scycles)
+        # append to list only after a valve cycle is completed
+        data.append(valves_dict)
 
     # create output directory if not exists
     output_dir = create_output_dir()
 
-    # save data to several csv files
-    for valve in valves:
-        #for param in ['primary', 'secondary']:
-            #print(data[valve][0][param])
-            # write two files with all sensors data
-            #sensors_df = pd.concat(
-            #    [x[param] for x in data[valve][:]], ignore_index=True, axis=1)
-            #fname = os.path.join(
-            #    output_dir, f'v{valve}_{param}_all_sensors.csv')
-            #sensors_df.to_csv(fname, index=False)
-        for sensor in sensors:
-            # write one
-            fname = os.path.join(output_dir, f'v{valve}s{sensor}.csv')
-            data[valve][sensor].to_csv(fname, index=False)
+    # save all collected data to a single json file
+    with open(os.path.join(output_dir, 'data.json'), 'w', encoding='UTF-8') as outfile:
+        json.dump(data, outfile, ensure_ascii=False)
 
-    shutdown()
-    
-    return
+    # convert to dataframe
+    data_df = pd.json_normalize(data)
+
+    # save data to several csv files
+    # for valve in valves:
+    # for param in ['primary', 'secondary']:
+    # print(data[valve][0][param])
+    # write two files with all sensors data
+    # sensors_df = pd.concat(
+    #    [x[param] for x in data[valve][:]], ignore_index=True, axis=1)
+    # fname = os.path.join(
+    #    output_dir, f'v{valve}_{param}_all_sensors.csv')
+    #sensors_df.to_csv(fname, index=False)
+    #    for sensor in sensors:
+    #        # write one
+    #        fname = os.path.join(output_dir, f'v{valve}s{sensor}.csv')
+    #        data[valve][sensor].to_csv(fname, index=False)
 
 
 if __name__ == '__main__':
@@ -442,7 +447,21 @@ if __name__ == '__main__':
     valves_arduino = ArduinoConnection('valves', Board.MEGA, id=1)
     sensors_arduino = ArduinoConnection('sensors', Board.UNO, id=2)
 
+    # configure valves and sensors board pins
+    valves_arduino.configure_pins(('D2', 'D3'))
+    sensors_arduino.configure_pins(
+        ('A0', 'A1', 'A2', 'A3', 'A4', 'A5', 'D2', 'D3'))
+
+    # configure number of cycles
+    #sensors_cycles = 3
+    #valves_cycles = 2
+
     # run the experiment
-    experiment()
+    try:
+        run(scycles=3, vcycles=2)
+    except KeyboardInterrupt:
+        ColorPrint.print_fail("\nProgram interrupted!")
+    finally:
+        shutdown()
 
     sys.exit(0)
