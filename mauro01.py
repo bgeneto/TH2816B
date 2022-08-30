@@ -35,7 +35,7 @@ __email__ = "b g e n e t o @ g m a i l d o t c o m"
 __copyright__ = "Copyright 2022, Bernhard Enders"
 __license__ = "GPL"
 __version__ = "1.1.2"
-__date__ = "20220829"
+__date__ = "20220830"
 __status__ = "Development"
 
 
@@ -401,22 +401,26 @@ def run(scycles, vcycles):
     valves_dict = {key: {} for key in valves_lst}
 
     # main experiment loop
-    for _ in range(vcycles):
+    for r in range(vcycles):
         for valve in valves:
             valves_arduino.switch_onoff([valve])
             valves_dict[f'V{valve}'] = sensors_arduino.loop(sensors, scycles)
         # append to list only after a valve cycle is completed
         data.append(valves_dict)
+        # write individual sensor data to file
+        fname='R{r}V0S0.csv'
+        pd.DataFrame(data[0]['V0']['S0']).to_csv(fname, index=False)
+
 
     # create output directory if not exists
     output_dir = create_output_dir()
 
     # save all collected data to a single json file
-    with open(os.path.join(output_dir, 'data.json'), 'w', encoding='UTF-8') as outfile:
+    with open(os.path.join(output_dir, 'results.json'), 'w', encoding='UTF-8') as outfile:
         json.dump(data, outfile, ensure_ascii=False)
 
     # convert to dataframe
-    data_df = pd.json_normalize(data)
+    #data_df = pd.json_normalize(data)
 
     # save data to several csv files
     # for valve in valves:
