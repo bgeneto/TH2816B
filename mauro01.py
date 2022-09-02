@@ -83,7 +83,8 @@ class ArduinoConnection:
         self.name = name
         self.model = model
         self.id = id
-        self.pins = []
+        self.valves_pins = []
+        self.sensors_pins = []
         self.connection_attempt()
 
     def connect(self):
@@ -130,29 +131,49 @@ class ArduinoConnection:
     def convert_pin_number(self, pin):
         '''convert analog pin to digital if required and
            use the correct pin numbering instead of board numbering/naming'''
-        if isinstance(pin, int):
-            return pin
-        elif isinstance(pin, str):
-            if pin[0].lower() == 'A'.lower():
-                return self.analog_to_digital(int(pin[1:]))
-            elif pin[0].lower() == 'D'.lower():
-                return int(pin[1:])
-            else:  # supposing string of only numbers
-                return int(pin)
+        if isinstance(pin, list):
+            for i, p in enumerate(pin):
+                if p[0].lower() == 'A'.lower():
+                    pin[i] = self.analog_to_digital(int(p[1:]))
+                elif p[0].lower() == 'D'.lower():
+                    pin[i] = int(pin[1:])
         else:  # unexpected type
             raise TypeError
 
-    def configure_pins(self, physical_pins):
+        return pin
+
+    def configure_pins(self, valves_phys_pins, sensors_phys_pins):
         '''set proper pin number and configure required pins as digital output'''
+        # ensure that pins are given as a list
+        for idx, vp in enumerate(valves_phys_pins):
+            if not isinstance(vp, list):
+                valves_phys_pins[idx] = [vp]
+        for idx, sp in enumerate(sensors_phys_pins):
+            if not isinstance(sp, list):
+                sensors_phys_pins[idx] = [sp]
+
         # convert physical pin name scheme with proper pin number
-        for i, pin in enumerate(physical_pins):
-            pin_number = self.convert_pin_number(pin)
-            self.pins.insert(i, pin_number)
+        for i, pin in enumerate(valves_phys_pins):
+            pin_number_lst = self.convert_pin_number(pin)
+            self.valves_pins.insert(i, pin_number_lst)
             # set all pins as digital output
-            self.ser.set_pin_mode_digital_output(pin_number)
-            time.sleep(0.1)  # lets be cautious and wait a little bit
-            self.ser.digital_write(pin_number, OFF)
-            time.sleep(0.1)  # lets be cautious and wait a little bit
+            for p in pin_number_lst:
+                self.ser.set_pin_mode_digital_output(p)
+                time.sleep(0.1)  # lets be cautious and wait a little bit
+                # turn off all pins
+                self.ser.digital_write(p, OFF)
+                time.sleep(0.1)  # lets be cautious and wait a little bit
+
+        for i, pin in enumerate(sensors_phys_pins):
+            pin_number_lst = self.convert_pin_number(pin)
+            self.sensors_pins.insert(i, pin_number_lst)
+            # set all pins as digital output
+            for p in pin_number_lst:
+                self.ser.set_pin_mode_digital_output(p)
+                time.sleep(0.1)  # lets be cautious and wait a little bit
+                # turn off all pins
+                self.ser.digital_write(p, OFF)
+                time.sleep(0.1)  # lets be cautious and wait a little bit
 
     def switch_onoff(self, pin_pos, wait=0):
         '''turn on selected pins at pin_pos and turn off all others'''
@@ -442,13 +463,19 @@ if __name__ == '__main__':
     lcr_meter = SerialConnection('lcr', "/dev/serial0", timeout=1)
 
     # arduino connection
-    valves_arduino = ArduinoConnection('valves', Board.MEGA, id=1)
-    sensors_arduino = ArduinoConnection('sensors', Board.UNO, id=2)
+    #valves_arduino = ArduinoConnection('valves', Board.MEGA, id=1)
+    #sensors_arduino = ArduinoConnection('sensors', Board.UNO, id=2)
+    arduino = ArduinoConnection('valves', Board.MEGA, id=1)
 
     # configure valves and sensors board pins
-    valves_arduino.configure_pins(('D2', 'D3'))
-    sensors_arduino.configure_pins(
-        ('A0', 'A1', 'A2', 'A3', 'A4', 'A5', 'D2', 'D3'))
+    valves_pins = ['D38', 'D40']
+    sensors_pins = [['D22', 'D23'], ['D24', 'D25'], ['D26', 'D26'], ['D28', 'D29'],
+                    ['D30', 'D31'], ['D32', 'D33'], ['D34', 'D35'], ['D36', 'D37']]
+    #valves_arduino.configure_pins(('D2', 'D3'))
+    # sensors_arduino.configure_pins(
+    #    ('A0', 'A1', 'A2', 'A3', 'A4', 'A5', 'D2', 'D3'))
+
+    arduino.configure_pins(valves=valves_pins, sensors=sensors_pins)
 
     # configure number of cycles
     #sensors_cycles = 3
