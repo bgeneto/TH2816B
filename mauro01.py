@@ -22,9 +22,7 @@ import sys
 import time
 import traceback
 from enum import Enum
-from io import StringIO
 
-import pandas as pd
 import serial
 from pymata4 import pymata4
 from serial.threaded import LineReader, ReaderThread
@@ -34,8 +32,8 @@ __maintainer__ = "Bernhard Enders"
 __email__ = "b g e n e t o @ g m a i l d o t c o m"
 __copyright__ = "Copyright 2022, Bernhard Enders"
 __license__ = "GPL"
-__version__ = "1.1.2"
-__date__ = "20220830"
+__version__ = "1.1.3"
+__date__ = "20220902"
 __status__ = "Development"
 
 
@@ -407,10 +405,6 @@ def run(scycles, vcycles):
             valves_dict[f'V{valve}'] = sensors_arduino.loop(sensors, scycles)
         # append to list only after a valve cycle is completed
         data.append(valves_dict)
-        # write individual sensor data to file
-        fname='R{r}V0S0.csv'
-        pd.DataFrame(data[0]['V0']['S0']).to_csv(fname, index=False)
-
 
     # create output directory if not exists
     output_dir = create_output_dir()
