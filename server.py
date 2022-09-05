@@ -86,10 +86,8 @@ class FormHandler(tornado.web.RequestHandler):
                 self.arduino_config()
         except:
             self.redirect(f'page?id={page_id}&status=2')
-            return False
 
         self.redirect(f'page?id={page_id}&status=1')
-        return True
 
     get = post
 

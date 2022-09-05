@@ -33,8 +33,8 @@ __maintainer__ = "Bernhard Enders"
 __email__ = "b g e n e t o @ g m a i l d o t c o m"
 __copyright__ = "Copyright 2022, Bernhard Enders"
 __license__ = "GPL"
-__version__ = "1.1.4"
-__date__ = "20220902"
+__version__ = "1.1.5"
+__date__ = "20220905"
 __status__ = "Development"
 
 
@@ -42,24 +42,25 @@ class ColorPrint:
     '''print terminal messages in colors '''
     @staticmethod
     def print_fail(message, end='\n'):
-        sys.stderr.write('\x1b[1;31m' + 'ERROR: ' + message + '\x1b[0m' + end)
+        sys.stderr.write('\x1b[1;31m' + 'ERROR: ' +
+                         repr(message) + '\x1b[0m' + end)
 
     @staticmethod
     def print_pass(message, end='\n'):
-        sys.stdout.write('\x1b[1;32m' + message + '\x1b[0m' + end)
+        sys.stdout.write('\x1b[1;32m' + repr(message) + '\x1b[0m' + end)
 
     @staticmethod
     def print_warn(message, end='\n'):
         sys.stderr.write('\x1b[1;33m' + 'WARNING: ' +
-                         message + '\x1b[0m' + end)
+                         repr(message) + '\x1b[0m' + end)
 
     @staticmethod
     def print_info(message, end='\n'):
-        sys.stdout.write('\x1b[1;34m' + message + '\x1b[0m' + end)
+        sys.stdout.write('\x1b[1;34m' + repr(message) + '\x1b[0m' + end)
 
     @staticmethod
     def print_bold(message, end='\n'):
-        sys.stdout.write('\x1b[1;37m' + message + '\x1b[0m' + end)
+        sys.stdout.write('\x1b[1;37m' + repr(message) + '\x1b[0m' + end)
 
 
 class Board(Enum):
@@ -121,14 +122,16 @@ class ArduinoConnection:
         '''switch all pins off'''
         for pins in self.valves_pins:
             for pin in pins:
+                ColorPrint.print_warn(pin)
                 self.ser.digital_write(pin, OFF)
                 time.sleep(0.1)
         for pins in self.sensors_pins:
             for pin in pins:
+                ColorPrint.print_warn(pin)
                 self.ser.digital_write(pin, OFF)
                 time.sleep(0.1)
 
-    def _analog_to_digital(self, num):
+    def _analog_to_digital(self, num) -> int:
         '''When configuring an analog input pin as a digital input/output,
         you must use the pin's digital pin number equivalent. For example,
         on an Arduino Uno, if you wish to use pin A0 as a digital pin,
@@ -145,10 +148,15 @@ class ArduinoConnection:
            use the correct pin numbering instead of board numbering/naming'''
         if isinstance(pins, list):
             for idx, pin in enumerate(pins):
-                if pin[0].lower() == 'A'.lower():
-                    pins[idx] = self._analog_to_digital(int(pin[1:]))
-                elif pin[0].lower() == 'D'.lower():
-                    pins[idx] = int(pins[1:])
+                for p in pin.split(','):
+                    # remove empty pin
+                    if len(p) < 1:
+                        del pins[idx]
+                        continue
+                    if p[0].lower() == 'A'.lower():
+                        pins[idx] = self._analog_to_digital(int(p[1:]))
+                    elif p[0].lower() == 'D'.lower():
+                        pins[idx] = int(p[1:])
         else:  # unexpected type
             raise TypeError
 
@@ -157,18 +165,18 @@ class ArduinoConnection:
     def _init_pins(self, pins: list) -> list:
         '''convert pin name scheme, set output mode and turn off all pins'''
 
-        # unexpected type
-        if not isinstance(pins, list):
-            raise TypeError
-
-        proper_pins = []
         for idx, pin in enumerate(pins):
             if not isinstance(pin, list):
                 pins[idx] = [pin]
+
+        proper_pins = []
+        for idx, pin in enumerate(pins):
             # convert pin name scheme, set output mode and turn off pins
             proper_pins.append(self._convert_pin_number(pin))
-            # set all pins as digital output
-            for pin in proper_pins:
+
+        # set all pins as digital output
+        for pins in proper_pins:
+            for pin in pins:
                 self.ser.set_pin_mode_digital_output(pin)
                 # turn off all pins at initialization
                 self.ser.digital_write(pin, OFF)
@@ -193,12 +201,13 @@ class ArduinoConnection:
         # turn on select positions and turn off all others
         for idx, pins in enumerate(pins_lst):
             if idx in pins_pos:
-                ColorPrint.print_info(f"Turning ON pin {pins}")
                 for pin in pins:
+                    ColorPrint.print_info(f"Turning ON pin {pin}")
                     self.ser.digital_write(pin, ON)
                     time.sleep(0.1)
             else:
                 for pin in pins:
+                    ColorPrint.print_info(f"Turning OFF pin {pin}")
                     self.ser.digital_write(pin, OFF)
                     time.sleep(0.1)
         # global wait (if requested)
@@ -228,7 +237,7 @@ class ArduinoConnection:
             for sensor in sensors:
                 # first thing is to turn on the sensor and wait for it to settle
                 self.switch_onoff(self.sensors_pins, [sensor])
-                time.sleep(1)
+                time.sleep(0.1)
                 # now we empty the input buffer list
                 lcr_meter.protocol.received_lines = []
                 # wait 'reading_time' seconds
@@ -377,7 +386,7 @@ class SerialReaderProtocolLine(LineReader):
     def connection_lost(self, exc):
         if exc:
             traceback.print_exc(exc)
-        ColorPrint.print_fail('Serial port closed\n')
+        ColorPrint.print_info('Serial port closed')
 
 
 def shutdown():
@@ -392,6 +401,7 @@ def shutdown():
             arduino.switch_all_off()
             time.sleep(0.1)
             arduino.ser.shutdown()
+            ColorPrint.print_info(f'Arduino {arduino.name} shutdown')
     except Exception as exc:
         traceback.print_exc(exc)
 
@@ -429,19 +439,18 @@ def run_experiment(scycles, vcycles):
     if num_arduinos == 1:
         arduino_sensors = arduinos['all']
         arduino_valves = arduinos['all']
-        valves_pos = range(len(arduinos['all'].valves_pins))
-        sensors_pos = range(len(arduinos['all'].sensors_pins))
+        valves_pos = range(len(arduino_valves.valves_pins))
+        sensors_pos = range(len(arduino_sensors.sensors_pins))
     else:
         arduino_sensors = arduinos['sensors']
         arduino_valves = arduinos['valves']
-        sensors_pos = range(len(arduinos['sensors'].sensors_pins))
-        valves_pos = range(len(arduinos['valves'].valves_pins))
+        sensors_pos = range(len(arduino_sensors.sensors_pins))
+        valves_pos = range(len(arduino_valves.valves_pins))
 
     # store retrieved data in a list of dictionaries
     data = []
     valves_lst = [f'V{idx}' for idx in valves_pos]
     valves_dict = {key: {} for key in valves_lst}
-    print(valves_dict)
 
     # main experiment loop
     for _ in range(vcycles):
@@ -480,47 +489,82 @@ def run_experiment(scycles, vcycles):
 
 def arduinos_connect():
     '''connect to arduinos'''
+    arduinos = {}
     arduino_model = str(cfg.get_setting("arduino2", "model"))
     arduino_board = Board.MEGA if arduino_model == 'MEGA' else Board.UNO
     arduino_sensors = str(cfg.get_setting("arduino2", "sensors")).split(';')
     arduino_valves = str(cfg.get_setting("arduino2", "valves")).split(';')
     empty_sensors = all(len(elem) == 0 for elem in arduino_sensors)
     empty_valves = all(len(elem) == 0 for elem in arduino_valves)
-    if empty_sensors and empty_valves:
+
+    if empty_sensors and empty_valves:  # only one arduino
         arduino_model = str(cfg.get_setting("arduino1", "model"))
         arduino_board = Board.MEGA if arduino_model == 'MEGA' else Board.UNO
         arduino_sensors = str(cfg.get_setting(
             "arduino1", "sensors")).split(';')
         arduino_valves = str(cfg.get_setting("arduino1", "valves")).split(';')
+        sensors = []
+        for idx, val in enumerate(arduino_sensors):
+            if len(val) > 0:
+                sensors.append(val.split(','))
+        valves = []
+        for idx, val in enumerate(arduino_valves):
+            if len(val) > 0:
+                valves.append(val.split(','))
         arduinos['all'] = ArduinoConnection(
             'valves and sensors', arduino_board, id=1)
         arduinos['all'].configure_pins(
-            valves_pins=arduino_valves, sensors_pins=arduino_sensors)
+            valves_pins=valves, sensors_pins=sensors)
     else:  # two arduinos
         if empty_sensors:
             arduinos['valves'] = ArduinoConnection(
                 'valves', arduino_board, id=2)
-            arduinos['valves'].configure_pins(valves_pins=arduino_valves)
+            arduinos['sensors'] = ArduinoConnection(
+                'sensors', arduino_board, id=1)
             # get other arduino configuration
             arduino_model = str(cfg.get_setting("arduino1", "model"))
             arduino_board = Board.MEGA if arduino_model == 'MEGA' else Board.UNO
             arduino_sensors = str(cfg.get_setting(
                 "arduino1", "sensors")).split(';')
-            arduinos['sensors'] = ArduinoConnection(
-                'sensors', arduino_board, id=1)
-            arduinos['sensors'].configure_pins(sensors_pins=arduino_sensors)
+            arduino_valves = str(cfg.get_setting(
+                "arduino2", "valves")).split(';')
+            sensors = []
+            for idx, val in enumerate(arduino_sensors):
+                if len(val) > 0:
+                    sensors.append(val.split(','))
+            valves = []
+            for idx, val in enumerate(arduino_valves):
+                if len(val) > 0:
+                    valves.append(val.split(','))
+            arduinos['valves'].configure_pins(valves_pins=valves)
+            arduinos['sensors'].configure_pins(sensors_pins=sensors)
         elif empty_valves:
             arduinos['sensors'] = ArduinoConnection(
                 'sensors', arduino_board, id=2)
-            arduinos['sensors'].configure_pins(sensors_pins=arduino_sensors)
+            arduinos['valves'] = ArduinoConnection(
+                'valves', arduino_board, id=1)
             # get other arduino configuration
             arduino_model = str(cfg.get_setting("arduino1", "model"))
             arduino_board = Board.MEGA if arduino_model == 'MEGA' else Board.UNO
             arduino_valves = str(cfg.get_setting(
                 "arduino1", "valves")).split(';')
-            arduinos['valves'] = ArduinoConnection(
-                'valves', arduino_board, id=1)
-            arduinos['valves'].configure_pins(valves_pins=arduino_valves)
+            arduino_sensors = str(cfg.get_setting(
+                "arduino2", "sensors")).split(';')
+            valves = []
+            for idx, val in enumerate(arduino_valves):
+                if len(val) > 0:
+                    valves.append(val.split(','))
+            sensors = []
+            for idx, val in enumerate(arduino_sensors):
+                if len(val) > 0:
+                    sensors.append(val.split(','))
+            arduinos['sensors'].configure_pins(sensors_pins=sensors)
+            arduinos['valves'].configure_pins(valves_pins=valves)
+
+    print('arduino_valves')
+    print(valves)
+    print('arduino_sensors')
+    print(sensors)
 
     return arduinos
 
@@ -557,7 +601,7 @@ if __name__ == '__main__':
     try:
         run_experiment(scycles=sensors_loop, vcycles=valves_loop)
     except KeyboardInterrupt:
-        ColorPrint.print_fail("\nProgram interrupted!")
+        ColorPrint.print_fail("Program interrupted!")
     finally:
         shutdown()
 
