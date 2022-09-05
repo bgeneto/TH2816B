@@ -23,12 +23,15 @@
   <!-- ======== sidebar-nav start =========== -->
   <aside class="sidebar-nav-wrapper">
     <div class="navbar-logo">
-      <a href="index.html">
+      <a href="/">
         <img src="static/images/logo/logo.svg" alt="logo" />
       </a>
     </div>
     <nav class="sidebar-nav">
       <ul>
+        <li class="nav-item">
+          <a href="/" class="active" data-i18n="menu.index"></a>
+        </li>
         <li class="nav-item nav-item-has-children">
           <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_1" aria-controls="ddmenu_1"
             aria-expanded="true" aria-label="Toggle navigation">
@@ -38,12 +41,9 @@
                   d="M17.4167 4.58333V6.41667H13.75V4.58333H17.4167ZM8.25 4.58333V10.0833H4.58333V4.58333H8.25ZM17.4167 11.9167V17.4167H13.75V11.9167H17.4167ZM8.25 15.5833V17.4167H4.58333V15.5833H8.25ZM19.25 2.75H11.9167V8.25H19.25V2.75ZM10.0833 2.75H2.75V11.9167H10.0833V2.75ZM19.25 10.0833H11.9167V19.25H19.25V10.0833ZM10.0833 13.75H2.75V19.25H10.0833V13.75Z" />
               </svg>
             </span>
-            <span class="text" data-i18n="menu.pages"></span>
+            <span class="text" data-i18n="menu.config"></span>
           </a>
           <ul id="ddmenu_1" class="collapse show dropdown-nav">
-            <li>
-              <a href="/" data-i18n="menu.index"></a>
-            </li>
             <li>
               <a href="/page?id=1" class="active" data-i18n="menu.page1"></a>
             </li>
@@ -106,41 +106,48 @@
           <span data-i18n="command.err"></span><br>
           <span id="alert-msg-text"></span>
         </div>
-
         <div id="ok-msg" class="alert alert-success" role="alert" style="display: none">
           <span data-i18n="command.ok"></span>
         </div>
 
-        <form id="form-sent" class="row g-2">
+        <form id="page1-form" action="/form" method="post" class="row g-2">
+          <input type="hidden" name="page_id" id="page_id" value="1">
           <textarea id="received" hidden></textarea>
-            <div class="form-elements-wrapper">
-              <!-- row -->
-              <div class="row">
-                <div class="col-lg-12">
-                  <div class="mb-3">
-                    <div class="button-group d-flex justify-content-left flex-wrap">
-                      <button id="experiment_send" type="submit" class="btn btn-primary" data-i18n="page1.button"></button>
-                      &nbsp;&nbsp;<button id="page1_clear" type="button" class="btn btn-warning"
-                        data-i18n="data.button"></button>
-                    </div>
+          <div class="row">
+            <div class="col-lg-6">
+              <div class="card-style mb-30">
+                <div class="input-group mb-3">
+                  <div class="input-style-4">
+                    <label for="valves_loop" class="uppercase" data-i18n="page1.valves_loop"></label>
+                    <input type="number" min="1" max="3600" maxlength="4" name="valves_loop" id="valves_loop"
+                      data-i18n="[placeholder]page1.loop_help" value="{{ valves_loop }}" />&nbsp;<span data-i18n="page1.loop_help"></span>
                   </div>
-                  <div class="card-style mb-30">
-                    <div class="input-style-1">
-                      <label class="uppercase" data-i18n="data.output_label"></label>
-                      <textarea id="received" rows="8">Connecting...</textarea>
-                    </div>
-                    <button id="clear" type="button" class="btn btn-warning" data-i18n="data.button"></button>
-                  </div><!-- end card -->
-                </div><!-- end col -->
-              </div>
-                  <!-- end row -->
                 </div>
-              </div><!-- end card -->
-            </div><!-- end col -->
-          </div><!-- end row -->
+                <div class="input-group mb-3">
+                  <div class="input-style-4">
+                    <label for="sensors_loop" class="uppercase" data-i18n="page1.sensors_loop"></label>
+                    <input type="number" min="1" max="3600" maxlength="4" name="sensors_loop" id="sensors_loop"
+                      data-i18n="[placeholder]page1.loop_help" value="{{ sensors_loop }}" />&nbsp;<span data-i18n="page1.loop_help"></span>
+                  </div>
+                </div>
+                <div class="input-group mb-3">
+                  <div class="input-style-4">
+                    <label for="sensors_duration" class="uppercase" data-i18n="page1.sensors_duration"></label>
+                    <input type="number" min="1" max="3600" maxlength="4" name="sensors_duration" id="sensors_duration"
+                      data-i18n="[placeholder]page1.duration_help" value="{{ sensors_duration }}" />&nbsp;<span data-i18n="page1.duration_help"></span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="mb-3">
+            <div class="button-group d-flex justify-content-left flex-wrap">
+              <button id="experiment_config" type="submit" class="btn btn-primary" data-i18n="page1.button"></button>
+              &nbsp;&nbsp;<button id="page1_clear" type="button" class="btn btn-warning"
+                data-i18n="data.button"></button>
+            </div>
+          </div>
         </form>
-
-      </div>
       </div>
       <!-- end container -->
     </section>
@@ -207,7 +214,22 @@
         <div class="modal-body" data-i18n="command.error">
         </div>
         <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+          <button type="button" class="btn btn-danger" data-bs-dismiss="modal">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="modal fade" id="okModal" tabindex="-1" aria-labelledby="okModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="okModalLabel" data-i18n="page1.ok_msg_title"></h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body" data-i18n="page1.ok_msg">
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-success" data-bs-dismiss="modal">Close</button>
         </div>
       </div>
     </div>
@@ -235,6 +257,17 @@
     });
   };
   $(document).ready(function () {
+    // get url parameters
+    let searchParams = new URLSearchParams(window.location.search);
+    if (searchParams.has('status')) {
+      let param = searchParams.get('status');
+      if (param == 1) {
+        $('#okModal').modal('show');
+      } else {
+        $('#errModal').modal('show');
+      }
+    }
+
     $('label.help').each(function () {
       let link = $(this).attr('for');
       $('#modalContainer').append('<div id="modal_' + link + '"></div>');
@@ -251,32 +284,10 @@
       return new bootstrap.Tooltip(tooltipTriggerEl)
     });
     $('#page1_clear').click(function () {
-      $('#form-sent')[0].reset();
+      $('#page1-form')[0].reset();
       $("#alert-msg").attr("style", "display:none");
       $("#ok-msg").attr("style", "display:none");
     });
-    $("#add_sensors").click(function () {
-      var newRowAdd = '';
-      let num_sensors = $("#num_sensors").val();
-      for (var i = 0; i < num_sensors; i++) {
-        newRowAdd +=
-          '<div id="row">' +
-          '<div class="input-group mb-3">' +
-          '<div class="input-style-4">' +
-          '<label for="sensor{}" class="uppercase" data-i18n="page1.sensor"></label>'.format(i+1) +
-          '<input type="number" id="duration{}" data-i18n="[placeholder]page1.duration" />'.format(i+1) +
-          '&nbsp;<button id="DeleteRow" class="btn btn-outline-danger" type="button"' +
-          'data-bs-toggle="tooltip" data-bs-placement="top"' +
-          'title="delete">delete</button>' +
-          '</div>' +
-          '</div>' +
-          '</div>';
-      }
-      $('#newinput').append(newRowAdd);
-    });
-    $("body").on("click", "#DeleteRow", function () {
-      $(this).parents("#row").remove();
-    })
   });
 </script>
 

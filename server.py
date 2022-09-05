@@ -10,20 +10,17 @@ History:  v1.0.0  Initial release
 import json
 import multiprocessing
 import os
-import socket
 import sys
-import time
-from devices import *
-from configparser import ConfigParser
 
+import serial
 import tornado.gen
 import tornado.httpserver
 import tornado.ioloop
 import tornado.web
 import tornado.websocket
 
-import serial
-import serialworker
+from devices import *
+import mycfg
 
 __author__ = "Bernhard Enders"
 __maintainer__ = "Bernhard Enders"
@@ -31,8 +28,8 @@ __email__ = "b g e n e t o @ g m a i l d o t c o m"
 __copyright__ = "Copyright 2022, Bernhard Enders"
 __license__ = "GPL"
 __status__ = "Development"
-__version__ = "1.1.0"
-__date__ = "20220826"
+__version__ = "1.1.1"
+__date__ = "20220905"
 
 
 clients = []
@@ -55,11 +52,90 @@ class IndexHandler(tornado.web.RequestHandler):
 class PageHandler(tornado.web.RequestHandler):
     def get(self):
         id = str(self.get_arguments("id")[0])
-        self.render(f'page{id}.html')
+        params = {}
+        params['valves_loop'] = int(cfg.get_setting(
+            "experiment", "valves_loop"))
+        params['sensors_loop'] = int(cfg.get_setting(
+            "experiment", "sensors_loop"))
+        params['sensors_duration'] = int(cfg.get_setting(
+            "experiment", "sensors_duration"))
+        params['a1_sensors'] = ['']*8
+        params['a1_valves'] = ['']*8
+        params['a2_sensors'] = ['']*8
+        params['a2_valves'] = ['']*8
+        params['a1_sensors'] = str(cfg.get_setting(
+            "arduino1", "sensors")).split(";")
+        params['a1_valves'] = str(cfg.get_setting(
+            "arduino1", "valves")).split(";")
+        params['a2_sensors'] = str(cfg.get_setting(
+            "arduino2", "sensors")).split(";")
+        params['a2_valves'] = str(cfg.get_setting(
+            "arduino2", "valves")).split(";")
+        # finally render the page with the parameters
+        self.render(f'page{id}.html', **params)
 
-# class StaticFileHandler(tornado.web.RequestHandler):
-#    def get(self):
-#        self.render('websocket.js')
+
+class FormHandler(tornado.web.RequestHandler):
+
+    def post(self):
+        page_id = int(self.get_body_arguments("page_id")[0])
+        try:
+            if page_id == 1:
+                self.experiment_config()
+            elif page_id == 2:
+                self.arduino_config()
+        except:
+            self.redirect(f'page?id={page_id}&status=2')
+            return False
+
+        self.redirect(f'page?id={page_id}&status=1')
+        return True
+
+    get = post
+
+    def arduino_config(self):
+        config = cfg.get_config()
+        config['arduino1'] = {}
+        config['arduino2'] = {}
+        # write arduino parameters to file
+        a1_sensors_lst = []
+        a1_valves_lst = []
+        a2_sensors_lst = []
+        a2_valves_lst = []
+        a1_model = str(self.get_body_arguments("A1M")[0])
+        a2_model = str(self.get_body_arguments("A2M")[0])
+        for idx in range(8):
+            a1_sensors_lst.append(
+                str(self.get_body_arguments(f"A1S{idx}")[0]))
+            a1_valves_lst.append(
+                str(self.get_body_arguments(f"A1V{idx}")[0]))
+            a2_sensors_lst.append(
+                str(self.get_body_arguments(f"A2S{idx}")[0]))
+            a2_valves_lst.append(
+                str(self.get_body_arguments(f"A2V{idx}")[0]))
+        config['arduino1']['model'] = a1_model
+        config['arduino2']['model'] = a2_model
+        config['arduino1']['sensors'] = ";".join(
+            a1_sensors_lst).replace(' ', '')
+        config['arduino1']['valves'] = ";".join(a1_valves_lst).replace(' ', '')
+        config['arduino2']['sensors'] = ";".join(
+            a2_sensors_lst).replace(' ', '')
+        config['arduino2']['valves'] = ";".join(a2_valves_lst).replace(' ', '')
+        with open(cfg_file, 'w', encoding='UTF-8') as configfile:
+            config.write(configfile)
+
+    def experiment_config(self):
+        config = cfg.get_config()
+        config['experiment'] = {}
+        # write experiment parameters to file
+        valves_loop = str(self.get_body_arguments('valves_loop')[0])
+        sensors_loop = str(self.get_body_arguments('sensors_loop')[0])
+        sensors_duration = str(self.get_body_arguments('sensors_duration')[0])
+        config['experiment']['valves_loop'] = valves_loop
+        config['experiment']['sensors_loop'] = sensors_loop
+        config['experiment']['sensors_duration'] = sensors_duration
+        with open(cfg_file, 'w', encoding='UTF-8') as configfile:
+            config.write(configfile)
 
 
 class WebSocketHandler(tornado.websocket.WebSocketHandler):
@@ -77,87 +153,13 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
         print('DEBUG: ws connection closed')
         clients.remove(self)
 
-    async def aclose(self):
-        self.close()
-        await self._closed.wait()
-        return self.close_code, self.close_reason
 
-
-# check the queue for pending messages, and reply that to all connected clients
 def check_queue():
+    '''check the queue for pending messages, and reply that to all connected clients'''
     if not output_queue.empty():
         message = output_queue.get()
         for c in clients:
             c.write_message(message)
-
-
-def get_ip():
-    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    s.settimeout(0)
-    try:
-        # doesn't even have to be reachable
-        s.connect(('10.255.255.255', 1))
-        ip = s.getsockname()[0]
-    except Exception:
-        ip = '127.0.0.1'
-    finally:
-        s.close()
-
-    return ip
-
-
-def ini_config():
-    '''
-    Creates an initial config file with default values
-    '''
-    config = ConfigParser()
-    config.add_section("config")
-    config.set("config", "port", "/dev/serial0")
-    config.set("config", "baudrate", "9600")
-    config.set("config", "parity", str(serial.PARITY_NONE))
-    config.set("config", "stopbits", str(serial.STOPBITS_ONE))
-    config.set("config", "bytesize", str(serial.EIGHTBITS))
-    config.set("config", "timeout", "1")
-    config.set("config", "web_port", "8080")
-    config.set("config", "web_ip", get_ip())
-
-    with open(cfg_file, "w") as config_file:
-        try:
-            config.write(config_file)
-        except Exception as e:
-            print("Error creating initial config file. Check permissions.")
-
-
-def get_config():
-    '''
-    Returns the config object
-    '''
-    if not os.path.isfile(cfg_file):
-        ini_config()
-
-    config = ConfigParser()
-
-    try:
-        config.read(cfg_file)
-    except Exception as e:
-        print(str(e))
-        os._exit(os.EX_CONFIG)
-
-    return config
-
-
-def get_setting(section, setting):
-    '''
-    Return a setting value
-    '''
-    config = get_config()
-    try:
-        value = config.get(section, setting)
-    except Exception as e:
-        print(str(e))
-        os._exit(os.EX_CONFIG)
-
-    return value
 
 
 def setup_ws(web_ip, web_port):
@@ -184,30 +186,14 @@ def setup_ws(web_ip, web_port):
         js.write(data)
 
 
-def read_config(cfg_file):
-    ser_params = {
-        'port': get_setting("config", "port"),
-        'baudrate': int(get_setting("config", "baudrate")),
-        'parity': str(get_setting("config", "parity")),
-        'stopbits': int(get_setting("config", "stopbits")),
-        'bytesize': int(get_setting("config", "bytesize")),
-        'timeout': int(get_setting("config", "timeout"))
-    }
-    ws_params = {
-        'web_port': int(get_setting("config", "web_port")),
-        'web_ip': get_setting("config", "web_ip")
-    }
-
-    return ser_params, ws_params
-
-
 if __name__ == '__main__':
     # get user settings
     script_dir = os.path.dirname(sys.argv[0])
     if not len(script_dir):
         script_dir = '.' + os.sep
     cfg_file = os.path.join(script_dir, "config.ini")
-    ser_params, ws_params = read_config(cfg_file)
+    cfg = mycfg.MyConfig(cfg_file)
+    ser_params, ws_params = cfg.read_config()
 
     # setup websockets with ip and port
     setup_ws(**ws_params)
@@ -234,10 +220,13 @@ if __name__ == '__main__':
         (r"/page", PageHandler),
         (r"/static/(.*)", tornado.web.StaticFileHandler,
          {'path':  './static'}),
-        (r"/ws", WebSocketHandler)
+        (r"/ws", WebSocketHandler),
+        (r"/form", FormHandler)
     ]
     app = tornado.web.Application(
-        handlers=handlers
+        handlers=handlers,
+        debug=True,
+        autoreload=True
     )
     http_server = tornado.httpserver.HTTPServer(app)
     http_server.listen(ws_params['web_port'])

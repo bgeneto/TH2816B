@@ -26,6 +26,7 @@ from enum import Enum
 import serial
 from pymata4 import pymata4
 from serial.threaded import LineReader, ReaderThread
+import mycfg
 
 __author__ = "Bernhard Enders"
 __maintainer__ = "Bernhard Enders"
@@ -423,27 +424,30 @@ def run_experiment(scycles, vcycles):
     time.sleep(1)
 
     # choose valves to use (default: all)
-    if 'valves' in arduinos:
-        valves_pos = range(len(arduinos['valves'].valves_pins))
-    else:
-        valves_pos = range(len(arduinos['all'].valves_pins))
+    num_arduinos = len(arduinos)
 
-    # choose sensors to use (default: all)
-    if 'sensors' in arduinos:
-        sensors_pos = range(len(arduinos['sensors'].sensors_pins))
-    else:
+    if num_arduinos == 1:
+        arduino_sensors = arduinos['all']
+        arduino_valves = arduinos['all']
+        valves_pos = range(len(arduinos['all'].valves_pins))
         sensors_pos = range(len(arduinos['all'].sensors_pins))
+    else:
+        arduino_sensors = arduinos['sensors']
+        arduino_valves = arduinos['valves']
+        sensors_pos = range(len(arduinos['sensors'].sensors_pins))
+        valves_pos = range(len(arduinos['valves'].valves_pins))
 
     # store retrieved data in a list of dictionaries
     data = []
     valves_lst = [f'V{idx}' for idx in valves_pos]
     valves_dict = {key: {} for key in valves_lst}
+    print(valves_dict)
 
     # main experiment loop
     for _ in range(vcycles):
         for vpos in valves_pos:
-            arduino.switch_onoff(arduino.valves_pins, [vpos])
-            valves_dict[f'V{vpos}'] = arduino.sensors_loop(
+            arduino_valves.switch_onoff(arduino_valves.valves_pins, [vpos])
+            valves_dict[f'V{vpos}'] = arduino_sensors.sensors_loop(
                 sensors_pos, scycles)
         # append to list only after a valve cycle is completed
         data.append(valves_dict)
@@ -474,38 +478,84 @@ def run_experiment(scycles, vcycles):
     #        data[valve][sensor].to_csv(fname, index=False)
 
 
+def arduinos_connect():
+    '''connect to arduinos'''
+    arduino_model = str(cfg.get_setting("arduino2", "model"))
+    arduino_board = Board.MEGA if arduino_model == 'MEGA' else Board.UNO
+    arduino_sensors = str(cfg.get_setting("arduino2", "sensors")).split(';')
+    arduino_valves = str(cfg.get_setting("arduino2", "valves")).split(';')
+    empty_sensors = all(len(elem) == 0 for elem in arduino_sensors)
+    empty_valves = all(len(elem) == 0 for elem in arduino_valves)
+    if empty_sensors and empty_valves:
+        arduino_model = str(cfg.get_setting("arduino1", "model"))
+        arduino_board = Board.MEGA if arduino_model == 'MEGA' else Board.UNO
+        arduino_sensors = str(cfg.get_setting(
+            "arduino1", "sensors")).split(';')
+        arduino_valves = str(cfg.get_setting("arduino1", "valves")).split(';')
+        arduinos['all'] = ArduinoConnection(
+            'valves and sensors', arduino_board, id=1)
+        arduinos['all'].configure_pins(
+            valves_pins=arduino_valves, sensors_pins=arduino_sensors)
+    else:  # two arduinos
+        if empty_sensors:
+            arduinos['valves'] = ArduinoConnection(
+                'valves', arduino_board, id=2)
+            arduinos['valves'].configure_pins(valves_pins=arduino_valves)
+            # get other arduino configuration
+            arduino_model = str(cfg.get_setting("arduino1", "model"))
+            arduino_board = Board.MEGA if arduino_model == 'MEGA' else Board.UNO
+            arduino_sensors = str(cfg.get_setting(
+                "arduino1", "sensors")).split(';')
+            arduinos['sensors'] = ArduinoConnection(
+                'sensors', arduino_board, id=1)
+            arduinos['sensors'].configure_pins(sensors_pins=arduino_sensors)
+        elif empty_valves:
+            arduinos['sensors'] = ArduinoConnection(
+                'sensors', arduino_board, id=2)
+            arduinos['sensors'].configure_pins(sensors_pins=arduino_sensors)
+            # get other arduino configuration
+            arduino_model = str(cfg.get_setting("arduino1", "model"))
+            arduino_board = Board.MEGA if arduino_model == 'MEGA' else Board.UNO
+            arduino_valves = str(cfg.get_setting(
+                "arduino1", "valves")).split(';')
+            arduinos['valves'] = ArduinoConnection(
+                'valves', arduino_board, id=1)
+            arduinos['valves'].configure_pins(valves_pins=arduino_valves)
+
+    return arduinos
+
+
 if __name__ == '__main__':
 
     # global constants
     ON = 1
     OFF = 2
 
-    # LCR TH2816B connection
-    lcr_meter = SerialConnection('lcr', "/dev/serial0", timeout=1)
+    # this script directory path
+    script_dir = os.path.dirname(sys.argv[0])
 
-    # arduinos connection
-    arduinos = {}
-    #arduinos['valves'] = ArduinoConnection('valves', Board.MEGA, id=1)
-    #arduinos['sensors'] = ArduinoConnection('sensors', Board.UNO, id=2)
-    arduinos['all'] = ArduinoConnection('valves and sensors', Board.MEGA, id=1)
+    # config file path and name
+    cfg_file = os.path.join(script_dir, "config.ini")
+    cfg = mycfg.MyConfig(cfg_file)
 
-    # configure valves and sensors board pins
-    vpins = ['D38', 'D40']
-    spins = [['D22', 'D23'], ['D24', 'D25'], ['D26', 'D26'], ['D28', 'D29'],
-             ['D30', 'D31'], ['D32', 'D33'], ['D34', 'D35'], ['D36', 'D37']]
-    #valves_arduino.configure_pins(('D2', 'D3'))
-    # sensors_arduino.configure_pins(
-    #    ('A0', 'A1', 'A2', 'A3', 'A4', 'A5', 'D2', 'D3'))
+    # serial port configuration
+    serial_port = str(cfg.get_setting("config", "port"))
+    serial_baudrate = int(cfg.get_setting("config", "baudrate"))
 
-    arduinos['all'].configure_pins(valves_pins=vpins, sensors_pins=spins)
+    # experiment configuration
+    valves_loop = int(cfg.get_setting("experiment", "valves_loop"))
+    sensors_loop = int(cfg.get_setting("experiment", "sensors_loop"))
+    sensors_duration = int(cfg.get_setting("experiment", "sensors_duration"))
 
-    # configure number of cycles
-    #sensors_cycles = 3
-    #valves_cycles = 2
+    # configure and connect all required arduinos
+    arduinos = arduinos_connect()
+
+    # LCR TH2816B serial connection
+    lcr_meter = SerialConnection('lcr', serial_port, baudrate=serial_baudrate)
 
     # run the experiment
     try:
-        run_experiment(scycles=3, vcycles=2)
+        run_experiment(scycles=sensors_loop, vcycles=valves_loop)
     except KeyboardInterrupt:
         ColorPrint.print_fail("\nProgram interrupted!")
     finally:
