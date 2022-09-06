@@ -16,6 +16,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+import copy
 import json
 import os
 import sys
@@ -26,6 +27,7 @@ from enum import Enum
 import serial
 from pymata4 import pymata4
 from serial.threaded import LineReader, ReaderThread
+
 import mycfg
 
 __author__ = "Bernhard Enders"
@@ -33,8 +35,8 @@ __maintainer__ = "Bernhard Enders"
 __email__ = "b g e n e t o @ g m a i l d o t c o m"
 __copyright__ = "Copyright 2022, Bernhard Enders"
 __license__ = "GPL"
-__version__ = "1.1.5"
-__date__ = "20220905"
+__version__ = "1.1.6"
+__date__ = "20220906"
 __status__ = "Development"
 
 
@@ -210,46 +212,40 @@ class ArduinoConnection:
         # global wait (if requested)
         time.sleep(wait)
 
-    def sensors_loop(self, sensors, count):
+    def sensors_loop(self, sensors_pos, loop):
         '''loop through all the selected sensors'''
 
-        # LCR meter sampling rate
-        #reading_rate = 1/10.0
-
-        # LCR meter sampling duration (in seconds) per sensor
-        reading_time = sensors_duration
-
         # LCR meter primary and secondary parameters
-        cols = {'primary': [], 'secondary': []}
+        params = {'primary': [], 'secondary': []}
 
         # data structures to store the readings
-        sensors_lst = [f'S{idx}' for idx in sensors]
-        sensors_dict = {key: cols for key in sensors_lst}
+        sensors_lst = [f'S{idx}' for idx in sensors_pos]
+        sensors_dict = {sensor: copy.deepcopy(
+            params) for sensor in sensors_lst}
 
         # received data lists
         #str_lst = ['']*len(sensors)
 
-        while count > 0:
-            count = count - 1
-            for sensor in sensors:
+        while loop > 0:
+            loop -= 1
+            for spos in sensors_pos:
                 # first thing is to turn on the sensor and wait for it to settle
-                self.switch_onoff(self.sensors_pins, [sensor])
+                self.switch_onoff(self.sensors_pins, [spos])
+                # wait for the sensor to settle before taking a reading
                 time.sleep(0.5)
                 # now we empty the input buffer list
-                ColorPrint.print_bold('Start measuring...')
-                lcr_meter.protocol.received_lines = []
-                # wait 'reading_time' seconds
-                # for __ in range(int(reading_time/reading_rate)):
-                #    time.sleep(reading_rate)
-                time.sleep(reading_time)
-                ColorPrint.print_bold('Stop measuring...')
                 lcr_meter.transport.serial.flush()
+                lcr_meter.protocol.received_lines = []
+                ColorPrint.print_bold('Start measuring...')
+                # read duration
+                time.sleep(STIME)
+                ColorPrint.print_bold('Stop measuring...')
                 lines = lcr_meter.protocol.received_lines
                 for line in lines:
                     pri, sec = line.split(',')
-                    sensors_dict[f'S{sensor}']['primary'].append(
+                    sensors_dict[f'S{spos}']['primary'].append(
                         float(pri))
-                    sensors_dict[f'S{sensor}']['secondary'].append(
+                    sensors_dict[f'S{spos}']['secondary'].append(
                         float(sec))
                 # rx_str = '\n'.join(
                 #    lcr_meter.protocol.received_lines) + '\n'
@@ -427,25 +423,23 @@ def create_output_dir():
     return output_dir
 
 
-def run_experiment(scycles, vcycles):
+def run_experiment():
     '''run the experiment'''
 
     # wait before starting a measurement
     time.sleep(1)
 
-    # choose valves to use (default: all)
-    num_arduinos = len(arduinos)
-
-    if num_arduinos == 1:
+    # find out number of arduinos configured
+    if len(arduinos) == 1:
         arduino_sensors = arduinos['all']
         arduino_valves = arduinos['all']
-        valves_pos = range(len(arduino_valves.valves_pins))
-        sensors_pos = range(len(arduino_sensors.sensors_pins))
     else:
         arduino_sensors = arduinos['sensors']
         arduino_valves = arduinos['valves']
-        sensors_pos = range(len(arduino_sensors.sensors_pins))
-        valves_pos = range(len(arduino_valves.valves_pins))
+
+    # choose which sensors and valves to use (default: all)
+    sensors_pos = range(len(arduino_sensors.sensors_pins))
+    valves_pos = range(len(arduino_valves.valves_pins))
 
     # store retrieved data in a list of dictionaries
     data = []
@@ -453,11 +447,11 @@ def run_experiment(scycles, vcycles):
     valves_dict = {key: {} for key in valves_lst}
 
     # main experiment loop
-    for _ in range(vcycles):
+    for _ in range(VLOOP):
         for vpos in valves_pos:
             arduino_valves.switch_onoff(arduino_valves.valves_pins, [vpos])
             valves_dict[f'V{vpos}'] = arduino_sensors.sensors_loop(
-                sensors_pos, scycles)
+                sensors_pos, SLOOP)
         # append to list only after a valve cycle is completed
         data.append(valves_dict)
 
@@ -487,81 +481,67 @@ def run_experiment(scycles, vcycles):
     #        data[valve][sensor].to_csv(fname, index=False)
 
 
-def arduinos_connect():
+def arduinos_connect() -> dict[str, ArduinoConnection]:
     '''connect to arduinos'''
-    arduinos = {}
-    arduino_model = str(cfg.get_setting("arduino2", "model"))
-    arduino_board = Board.MEGA if arduino_model == 'MEGA' else Board.UNO
-    arduino_sensors = str(cfg.get_setting("arduino2", "sensors")).split(';')
-    arduino_valves = str(cfg.get_setting("arduino2", "valves")).split(';')
-    empty_sensors = all(len(elem) == 0 for elem in arduino_sensors)
-    empty_valves = all(len(elem) == 0 for elem in arduino_valves)
+    boards = {}
+    # check if arduino2 is present/configured
+    device_model = str(cfg.get_setting("arduino2", "model"))
+    device_board = Board.MEGA if device_model == 'MEGA' else Board.UNO
+    device_sensors = str(cfg.get_setting("arduino2", "sensors")).split(';')
+    device_valves = str(cfg.get_setting("arduino2", "valves")).split(';')
+    empty_sensors = all(len(elem) == 0 for elem in device_sensors)
+    empty_valves = all(len(elem) == 0 for elem in device_valves)
 
-    if empty_sensors and empty_valves:  # only one arduino
-        arduino_model = str(cfg.get_setting("arduino1", "model"))
-        arduino_board = Board.MEGA if arduino_model == 'MEGA' else Board.UNO
-        arduino_sensors = str(cfg.get_setting(
-            "arduino1", "sensors")).split(';')
-        arduino_valves = str(cfg.get_setting("arduino1", "valves")).split(';')
-        sensors = []
-        for idx, val in enumerate(arduino_sensors):
-            if len(val) > 0:
-                sensors.append(val.split(','))
-        valves = []
-        for idx, val in enumerate(arduino_valves):
-            if len(val) > 0:
-                valves.append(val.split(','))
-        arduinos['all'] = ArduinoConnection(
-            'valves and sensors', arduino_board, id=1)
-        arduinos['all'].configure_pins(
+    if empty_sensors and empty_valves:  # one arduino only
+        device = 'arduino1'
+        device_model = str(cfg.get_setting(device, "model"))
+        device_board = Board.MEGA if device_model == 'MEGA' else Board.UNO
+        device_sensors = str(cfg.get_setting(
+            device, "sensors")).split(';')
+        device_valves = str(cfg.get_setting(device, "valves")).split(';')
+        sensors = [val.split(',') for val in device_sensors if len(val) > 0]
+        valves = [val.split(',') for val in device_valves if len(val) > 0]
+        boards['all'] = ArduinoConnection(
+            'valves & sensors', device_board, id=1)
+        boards['all'].configure_pins(
             valves_pins=valves, sensors_pins=sensors)
     else:  # two arduinos
-        if empty_sensors:
-            arduinos['valves'] = ArduinoConnection(
-                'valves', arduino_board, id=2)
-            arduinos['sensors'] = ArduinoConnection(
-                'sensors', arduino_board, id=1)
+        if empty_sensors:  # find out which arduino is the sensors one
+            boards['valves'] = ArduinoConnection(
+                'valves', device_board, id=2)
             # get other arduino configuration
-            arduino_model = str(cfg.get_setting("arduino1", "model"))
-            arduino_board = Board.MEGA if arduino_model == 'MEGA' else Board.UNO
-            arduino_sensors = str(cfg.get_setting(
+            other_device_model = str(cfg.get_setting("arduino1", "model"))
+            other_device_board = Board.MEGA if other_device_model == 'MEGA' else Board.UNO
+            boards['sensors'] = ArduinoConnection(
+                'sensors', other_device_board, id=1)
+            device_sensors = str(cfg.get_setting(
                 "arduino1", "sensors")).split(';')
-            arduino_valves = str(cfg.get_setting(
+            device_valves = str(cfg.get_setting(
                 "arduino2", "valves")).split(';')
-            sensors = []
-            for idx, val in enumerate(arduino_sensors):
-                if len(val) > 0:
-                    sensors.append(val.split(','))
-            valves = []
-            for idx, val in enumerate(arduino_valves):
-                if len(val) > 0:
-                    valves.append(val.split(','))
-            arduinos['valves'].configure_pins(valves_pins=valves)
-            arduinos['sensors'].configure_pins(sensors_pins=sensors)
+            sensors = [val.split(',')
+                       for val in device_sensors if len(val) > 0]
+            valves = [val.split(',') for val in device_valves if len(val) > 0]
+            boards['valves'].configure_pins(valves_pins=valves)
+            boards['sensors'].configure_pins(sensors_pins=sensors)
         elif empty_valves:
-            arduinos['sensors'] = ArduinoConnection(
-                'sensors', arduino_board, id=2)
-            arduinos['valves'] = ArduinoConnection(
-                'valves', arduino_board, id=1)
+            boards['sensors'] = ArduinoConnection(
+                'sensors', device_board, id=2)
             # get other arduino configuration
-            arduino_model = str(cfg.get_setting("arduino1", "model"))
-            arduino_board = Board.MEGA if arduino_model == 'MEGA' else Board.UNO
-            arduino_valves = str(cfg.get_setting(
+            other_device_model = str(cfg.get_setting("arduino1", "model"))
+            other_device_board = Board.MEGA if other_device_model == 'MEGA' else Board.UNO
+            boards['valves'] = ArduinoConnection(
+                'valves', other_device_board, id=1)
+            device_valves = str(cfg.get_setting(
                 "arduino1", "valves")).split(';')
-            arduino_sensors = str(cfg.get_setting(
+            device_sensors = str(cfg.get_setting(
                 "arduino2", "sensors")).split(';')
-            valves = []
-            for idx, val in enumerate(arduino_valves):
-                if len(val) > 0:
-                    valves.append(val.split(','))
-            sensors = []
-            for idx, val in enumerate(arduino_sensors):
-                if len(val) > 0:
-                    sensors.append(val.split(','))
-            arduinos['sensors'].configure_pins(sensors_pins=sensors)
-            arduinos['valves'].configure_pins(valves_pins=valves)
+            valves = [val.split(',') for val in device_valves if len(val) > 0]
+            sensors = [val.split(',')
+                       for val in device_sensors if len(val) > 0]
+            boards['sensors'].configure_pins(sensors_pins=sensors)
+            boards['valves'].configure_pins(valves_pins=valves)
 
-    return arduinos
+    return boards
 
 
 if __name__ == '__main__':
@@ -571,30 +551,30 @@ if __name__ == '__main__':
     OFF = 2
 
     # this script directory path
-    script_dir = os.path.dirname(sys.argv[0])
+    SCRIPT_DIR = os.path.dirname(sys.argv[0])
 
     # config file path and name
-    cfg_file = os.path.join(script_dir, "config.ini")
-    cfg = mycfg.MyConfig(cfg_file)
+    CFGFN = os.path.join(SCRIPT_DIR, "config.ini")
+    cfg = mycfg.MyConfig(CFGFN)
 
     # serial port configuration
-    serial_port = str(cfg.get_setting("config", "port"))
-    serial_baudrate = int(cfg.get_setting("config", "baudrate"))
+    PORT = str(cfg.get_setting("config", "port"))
+    BAUDRATE = int(cfg.get_setting("config", "baudrate"))
 
     # experiment configuration
-    valves_loop = int(cfg.get_setting("experiment", "valves_loop"))
-    sensors_loop = int(cfg.get_setting("experiment", "sensors_loop"))
-    sensors_duration = int(cfg.get_setting("experiment", "sensors_duration"))
+    VLOOP = int(cfg.get_setting("experiment", "valves_loop"))
+    SLOOP = int(cfg.get_setting("experiment", "sensors_loop"))
+    STIME = int(cfg.get_setting("experiment", "sensors_duration"))
 
     # configure and connect all required arduinos
     arduinos = arduinos_connect()
 
     # LCR TH2816B serial connection
-    lcr_meter = SerialConnection('lcr', serial_port, baudrate=serial_baudrate)
+    lcr_meter = SerialConnection('lcr', PORT, baudrate=BAUDRATE)
 
     # run the experiment
     try:
-        run_experiment(scycles=sensors_loop, vcycles=valves_loop)
+        run_experiment()
     except KeyboardInterrupt:
         ColorPrint.print_fail("Program interrupted!")
     finally:
