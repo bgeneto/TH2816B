@@ -43,24 +43,24 @@ class ColorPrint:
     @staticmethod
     def print_fail(message, end='\n'):
         sys.stderr.write('\x1b[1;31m' + 'ERROR: ' +
-                         repr(message) + '\x1b[0m' + end)
+                         str(message) + '\x1b[0m' + end)
 
     @staticmethod
     def print_pass(message, end='\n'):
-        sys.stdout.write('\x1b[1;32m' + repr(message) + '\x1b[0m' + end)
+        sys.stdout.write('\x1b[1;32m' + str(message) + '\x1b[0m' + end)
 
     @staticmethod
     def print_warn(message, end='\n'):
         sys.stderr.write('\x1b[1;33m' + 'WARNING: ' +
-                         repr(message) + '\x1b[0m' + end)
+                         str(message) + '\x1b[0m' + end)
 
     @staticmethod
     def print_info(message, end='\n'):
-        sys.stdout.write('\x1b[1;34m' + repr(message) + '\x1b[0m' + end)
+        sys.stdout.write('\x1b[1;34m' + str(message) + '\x1b[0m' + end)
 
     @staticmethod
     def print_bold(message, end='\n'):
-        sys.stdout.write('\x1b[1;37m' + repr(message) + '\x1b[0m' + end)
+        sys.stdout.write('\x1b[1;37m' + str(message) + '\x1b[0m' + end)
 
 
 class Board(Enum):
@@ -122,12 +122,10 @@ class ArduinoConnection:
         '''switch all pins off'''
         for pins in self.valves_pins:
             for pin in pins:
-                ColorPrint.print_warn(pin)
                 self.ser.digital_write(pin, OFF)
                 time.sleep(0.1)
         for pins in self.sensors_pins:
             for pin in pins:
-                ColorPrint.print_warn(pin)
                 self.ser.digital_write(pin, OFF)
                 time.sleep(0.1)
 
@@ -200,16 +198,15 @@ class ArduinoConnection:
             raise TypeError
         # turn on select positions and turn off all others
         for idx, pins in enumerate(pins_lst):
+            time.sleep(0.1)
             if idx in pins_pos:
                 for pin in pins:
                     ColorPrint.print_info(f"Turning ON pin {pin}")
                     self.ser.digital_write(pin, ON)
-                    time.sleep(0.1)
             else:
                 for pin in pins:
                     ColorPrint.print_info(f"Turning OFF pin {pin}")
                     self.ser.digital_write(pin, OFF)
-                    time.sleep(0.1)
         # global wait (if requested)
         time.sleep(wait)
 
@@ -220,7 +217,7 @@ class ArduinoConnection:
         #reading_rate = 1/10.0
 
         # LCR meter sampling duration (in seconds) per sensor
-        reading_time = 2
+        reading_time = sensors_duration
 
         # LCR meter primary and secondary parameters
         cols = {'primary': [], 'secondary': []}
@@ -237,13 +234,16 @@ class ArduinoConnection:
             for sensor in sensors:
                 # first thing is to turn on the sensor and wait for it to settle
                 self.switch_onoff(self.sensors_pins, [sensor])
-                time.sleep(0.1)
+                time.sleep(0.5)
                 # now we empty the input buffer list
+                ColorPrint.print_bold('Start measuring...')
                 lcr_meter.protocol.received_lines = []
                 # wait 'reading_time' seconds
                 # for __ in range(int(reading_time/reading_rate)):
                 #    time.sleep(reading_rate)
                 time.sleep(reading_time)
+                ColorPrint.print_bold('Stop measuring...')
+                lcr_meter.transport.serial.flush()
                 lines = lcr_meter.protocol.received_lines
                 for line in lines:
                     pri, sec = line.split(',')
@@ -343,7 +343,7 @@ class SerialConnection:
                 self.connect()
                 # set LCR trigger to manual/software controlled mode
                 time.sleep(0.2)
-                self.protocol.write_line('APER MED,5')
+                self.protocol.write_line('APER SLOW')
                 time.sleep(0.2)
                 self.protocol.write_line('TRIG:SOUR INT')
                 break
@@ -560,11 +560,6 @@ def arduinos_connect():
                     sensors.append(val.split(','))
             arduinos['sensors'].configure_pins(sensors_pins=sensors)
             arduinos['valves'].configure_pins(valves_pins=valves)
-
-    print('arduino_valves')
-    print(valves)
-    print('arduino_sensors')
-    print(sensors)
 
     return arduinos
 
