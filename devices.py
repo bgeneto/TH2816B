@@ -23,6 +23,7 @@ import sys
 import time
 import traceback
 from enum import Enum
+from typing import Dict
 
 import serial
 from pymata4 import pymata4
@@ -35,7 +36,7 @@ __maintainer__ = "Bernhard Enders"
 __email__ = "b g e n e t o @ g m a i l d o t c o m"
 __copyright__ = "Copyright 2022, Bernhard Enders"
 __license__ = "GPL"
-__version__ = "1.1.6"
+__version__ = "1.1.7"
 __date__ = "20220909"
 __status__ = "Development"
 
@@ -96,7 +97,7 @@ class ArduinoConnection:
         else:
             ColorPrint.print_fail(
                 f"Unable to connect to device named '{self.name}'. Exiting...")
-            #shutdown()
+            # shutdown()
             sys.exit(1)
 
     def switch_all_off(self):
@@ -125,6 +126,7 @@ class ArduinoConnection:
     def _convert_pin_number(self, pins: list):
         '''convert analog pin to digital if required and
            use the correct pin numbering instead of board numbering/naming'''
+
         if isinstance(pins, list):
             for idx, pin in enumerate(pins):
                 for p in pin.split(','):
@@ -132,10 +134,15 @@ class ArduinoConnection:
                     if len(p) < 1:
                         del pins[idx]
                         continue
-                    if p[0].lower() == 'A'.lower():
-                        pins[idx] = self._analog_to_digital(int(p[1:]))
-                    elif p[0].lower() == 'D'.lower():
-                        pins[idx] = int(p[1:])
+                    try:
+                        # try to convert to int
+                        p = int(p)
+                        pins[idx] = p
+                    except ValueError:
+                        if p[0].lower() == 'A'.lower():
+                            pins[idx] = self._analog_to_digital(int(p[1:]))
+                        elif p[0].lower() == 'D'.lower():
+                            pins[idx] = int(p[1:])
         else:  # unexpected type
             raise TypeError
 
@@ -325,7 +332,7 @@ class SerialConnection:
         else:
             ColorPrint.print_fail(
                 f"Unable to connect to device named '{self.name}'. Exiting...")
-            #shutdown()
+            # shutdown()
             sys.exit(1)
 
     def close(self):
@@ -392,7 +399,7 @@ def create_output_dir():
             os.makedirs(output_dir)
         except Exception as _:
             ColorPrint.print_fail("Unable to create output directory!")
-            #shutdown()
+            # shutdown()
             sys.exit(1)
 
     return output_dir
@@ -415,6 +422,14 @@ def run_experiment(lcr_meter, arduinos, vloop, sloop, stime):
     # choose which sensors and valves to use (default: all)
     sensors_pos = range(len(arduino_sensors.sensors_pins))
     valves_pos = range(len(arduino_valves.valves_pins))
+
+    # check if arduino is configured
+    empty_sensors = all(
+        len(elem) == 0 for elem in arduino_sensors.sensors_pins)
+    empty_valves = all(len(elem) == 0 for elem in arduino_valves.valves_pins)
+    if empty_sensors or empty_valves:
+        ColorPrint.print_fail('Please configure arduino pins first!')
+        sys.exit(1)
 
     # store retrieved data in a list of dictionaries
     data = []
@@ -458,7 +473,7 @@ def run_experiment(lcr_meter, arduinos, vloop, sloop, stime):
     #        data[valve][sensor].to_csv(fname, index=False)
 
 
-def arduinos_connect(cfg) -> dict[str, ArduinoConnection]:
+def arduinos_connect(cfg) -> Dict[str, ArduinoConnection]:
     '''connect to arduinos'''
     boards = {}
     # check if arduino2 is present/configured

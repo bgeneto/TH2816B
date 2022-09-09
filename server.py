@@ -74,10 +74,14 @@ class PageHandler(tornado.web.RequestHandler):
             "arduino1", "sensors")).split(";")
         params['a1_valves'] = str(cfg.get_setting(
             "arduino1", "valves")).split(";")
+        params['a1_model'] = str(cfg.get_setting(
+            "arduino1", "model")).split(";")
         params['a2_sensors'] = str(cfg.get_setting(
             "arduino2", "sensors")).split(";")
         params['a2_valves'] = str(cfg.get_setting(
             "arduino2", "valves")).split(";")
+        params['a2_model'] = str(cfg.get_setting(
+            "arduino2", "model")).split(";")
         # finally render the page with the parameters
         self.render(f'page{id}.html', **params)
 
