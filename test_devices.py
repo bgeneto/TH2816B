@@ -3,17 +3,8 @@ import sys
 from devices import *
 import mycfg
 
-if __name__ == '__main__':
-    # find out this script's directory
-    SCRIPT_DIR = os.path.dirname(sys.argv[0])
-    if len(SCRIPT_DIR) < 1:
-        SCRIPT_DIR = '.' + os.sep
 
-    # user defined ini file
-    CFGFN = os.path.join(SCRIPT_DIR, "config.ini")
-
-    cfg = mycfg.MyConfig(CFGFN)
-
+def start_experiment():
     # experiment parameters
     params = dict(
         vloop=int(cfg.get_setting("experiment", "valves_loop")),
@@ -27,10 +18,23 @@ if __name__ == '__main__':
     # LCR TH2816B serial connection
     lcr = SerialConnection(cfg)
 
-    # run the experiment
     try:
         run_experiment(lcr, arduinos, **params)
     except KeyboardInterrupt:
         ColorPrint.print_fail("Program interrupted!")
     finally:
         shutdown(lcr, arduinos)
+
+
+if __name__ == '__main__':
+    # find out this script's directory
+    SCRIPT_DIR = os.path.dirname(sys.argv[0])
+    if len(SCRIPT_DIR) < 1:
+        SCRIPT_DIR = '.' + os.sep
+
+    # user defined ini file
+    CFGFN = os.path.join(SCRIPT_DIR, "config.ini")
+
+    cfg = mycfg.MyConfig(CFGFN)
+
+    start_experiment()

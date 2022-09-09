@@ -14,6 +14,7 @@ import sys
 from datetime import date
 
 import serial
+import tornado.concurrent
 import tornado.gen
 import tornado.httpserver
 import tornado.ioloop
@@ -30,8 +31,8 @@ __email__ = "b g e n e t o @ g m a i l d o t c o m"
 __copyright__ = "Copyright 2022, Bernhard Enders"
 __license__ = "GPL"
 __status__ = "Development"
-__version__ = "1.1.1"
-__date__ = "20220905"
+__version__ = "1.1.2"
+__date__ = "20220909"
 __year__ = date.today().year
 
 clients = []
@@ -88,13 +89,16 @@ class PageHandler(tornado.web.RequestHandler):
 
 class FormHandler(tornado.web.RequestHandler):
 
+    _thread_pool = tornado.concurrent.futures.ThreadPoolExecutor(max_workers=1)
+
     def post(self):
+        # every form most have a unique page_id
         try:
             page_id = int(self.get_body_arguments("page_id")[0])
         except:
             self.redirect(f'page?id=0&status=unknown')
             return
-
+        # treat each form differently
         try:
             if page_id == 0:
                 self.start_experiment()
@@ -156,25 +160,33 @@ class FormHandler(tornado.web.RequestHandler):
         with open(cfg.cfg_file, 'w', encoding='UTF-8') as configfile:
             config.write(configfile)
 
+    @tornado.concurrent.run_on_executor(executor='_thread_pool')
     def start_experiment(self):
-        # serial port configuration
-        PORT = str(cfg.get_setting("serial", "port"))
-        BAUDRATE = int(cfg.get_setting("serial", "baudrate"))
+        '''start a new experiment'''
+
+        # ensures that this variable is accessible in the other thread
+        cfg = mycfg.MyConfig(CFGFN)
+
+        # experiment parameters
+        params = dict(
+            vloop=int(cfg.get_setting("experiment", "valves_loop")),
+            sloop=int(cfg.get_setting("experiment", "sensors_loop")),
+            stime=int(cfg.get_setting("experiment", "sensors_duration"))
+        )
 
         # configure and connect all required arduinos
-        arduinos = arduinos_connect()
+        arduinos = arduinos_connect(cfg)
 
         # LCR TH2816B serial connection
-        lcr_meter = SerialConnection('lcr', PORT, baudrate=BAUDRATE)
+        lcr = SerialConnection(cfg)
 
         # run the experiment
         try:
-            run_experiment()
-        except KeyboardInterrupt:
-            ColorPrint.print_fail("Program interrupted!")
+            run_experiment(lcr, arduinos, **params)
+        except Exception as exp:
+            print(str(exp))
         finally:
-            shutdown()
-
+            shutdown(lcr, arduinos)
 
 
 class WebSocketHandler(tornado.websocket.WebSocketHandler):
@@ -225,10 +237,9 @@ def setup_ws(web_ip, web_port):
         js.write(data)
 
 
-
 if __name__ == '__main__':
     # find out this script's directory
-    SCRIPT_DIR = os.path.dirname(sys.argv[0])
+    SCRIPT_DIR = os.path.abspath(os.path.dirname(sys.argv[0]))
     if len(SCRIPT_DIR) < 1:
         SCRIPT_DIR = '.' + os.sep
 
@@ -240,6 +251,12 @@ if __name__ == '__main__':
 
     # setup ip and port
     setup_ws(**web_params)
+
+    # start the serial worker in background (as a deamon)
+    #sp = serialworker.SerialProcess(
+    #    input_queue, output_queue, serial_port, baud_rate, timeout)
+    #sp.daemon = True
+    #sp.start()
 
     # tornado setup
     handlers = [
@@ -272,14 +289,16 @@ if __name__ == '__main__':
     scheduler = tornado.ioloop.PeriodicCallback(
         check_queue, SCHEDULER_INTERVAL)
 
+    # tornado main loop
     try:
         scheduler.start()
         main_loop.start()
-    except:
+    except Exception as exp:
+        print(str(exp))
         pass
     finally:
         input_queue.close()
         output_queue.close()
         scheduler.stop()
         http_server.stop()
-        print('\nINFO: Web server stopped')
+        ColorPrint.print_bold('\nWeb server stopped!')
