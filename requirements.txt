@@ -1,4 +1,4 @@
-pandas
 pymata4
 pyserial
 tornado
+

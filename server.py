@@ -11,6 +11,7 @@ import json
 import multiprocessing
 import os
 import sys
+from datetime import date
 
 import serial
 import tornado.gen
@@ -19,8 +20,9 @@ import tornado.ioloop
 import tornado.web
 import tornado.websocket
 
-from devices import *
 import mycfg
+from colorprint import ColorPrint
+from devices import *
 
 __author__ = "Bernhard Enders"
 __maintainer__ = "Bernhard Enders"
@@ -30,7 +32,7 @@ __license__ = "GPL"
 __status__ = "Development"
 __version__ = "1.1.1"
 __date__ = "20220905"
-
+__year__ = date.today().year
 
 clients = []
 
@@ -46,13 +48,18 @@ valves_output_queue = multiprocessing.Queue()
 
 class IndexHandler(tornado.web.RequestHandler):
     def get(self):
-        self.render('index.html')
+        params = {}
+        params['__version__'] = __version__
+        params['__year__'] = __year__
+        self.render('index.html', **params)
 
 
 class PageHandler(tornado.web.RequestHandler):
     def get(self):
         id = str(self.get_arguments("id")[0])
         params = {}
+        params['__version__'] = __version__
+        params['__year__'] = __year__
         params['valves_loop'] = int(cfg.get_setting(
             "experiment", "valves_loop"))
         params['sensors_loop'] = int(cfg.get_setting(
@@ -78,16 +85,26 @@ class PageHandler(tornado.web.RequestHandler):
 class FormHandler(tornado.web.RequestHandler):
 
     def post(self):
-        page_id = int(self.get_body_arguments("page_id")[0])
         try:
-            if page_id == 1:
+            page_id = int(self.get_body_arguments("page_id")[0])
+        except:
+            self.redirect(f'page?id=0&status=unknown')
+            return
+
+        try:
+            if page_id == 0:
+                self.start_experiment()
+            elif page_id == 1:
                 self.experiment_config()
             elif page_id == 2:
                 self.arduino_config()
-        except:
+        except Exception as exp:
+            ColorPrint.print_fail(str(exp))
             self.redirect(f'page?id={page_id}&status=2')
+            return
 
         self.redirect(f'page?id={page_id}&status=1')
+        return
 
     get = post
 
@@ -119,7 +136,7 @@ class FormHandler(tornado.web.RequestHandler):
         config['arduino2']['sensors'] = ";".join(
             a2_sensors_lst).replace(' ', '')
         config['arduino2']['valves'] = ";".join(a2_valves_lst).replace(' ', '')
-        with open(cfg_file, 'w', encoding='UTF-8') as configfile:
+        with open(cfg.cfg_file, 'w', encoding='UTF-8') as configfile:
             config.write(configfile)
 
     def experiment_config(self):
@@ -132,8 +149,28 @@ class FormHandler(tornado.web.RequestHandler):
         config['experiment']['valves_loop'] = valves_loop
         config['experiment']['sensors_loop'] = sensors_loop
         config['experiment']['sensors_duration'] = sensors_duration
-        with open(cfg_file, 'w', encoding='UTF-8') as configfile:
+        with open(cfg.cfg_file, 'w', encoding='UTF-8') as configfile:
             config.write(configfile)
+
+    def start_experiment(self):
+        # serial port configuration
+        PORT = str(cfg.get_setting("serial", "port"))
+        BAUDRATE = int(cfg.get_setting("serial", "baudrate"))
+
+        # configure and connect all required arduinos
+        arduinos = arduinos_connect()
+
+        # LCR TH2816B serial connection
+        lcr_meter = SerialConnection('lcr', PORT, baudrate=BAUDRATE)
+
+        # run the experiment
+        try:
+            run_experiment()
+        except KeyboardInterrupt:
+            ColorPrint.print_fail("Program interrupted!")
+        finally:
+            shutdown()
+
 
 
 class WebSocketHandler(tornado.websocket.WebSocketHandler):
@@ -163,8 +200,8 @@ def check_queue():
 def setup_ws(web_ip, web_port):
     # template and js files
     ws_template = os.path.join(
-        script_dir, "static", "js", "websocket.template.js")
-    ws_file = os.path.join(script_dir, "static", "js", "websocket.js")
+        SCRIPT_DIR, "static", "js", "websocket.template.js")
+    ws_file = os.path.join(SCRIPT_DIR, "static", "js", "websocket.js")
 
     # check if websocket template file (provided) exists
     if not os.path.isfile(ws_template):
@@ -184,58 +221,53 @@ def setup_ws(web_ip, web_port):
         js.write(data)
 
 
+
 if __name__ == '__main__':
-    # get user settings
-    script_dir = os.path.dirname(sys.argv[0])
-    if not len(script_dir):
-        script_dir = '.' + os.sep
-    cfg_file = os.path.join(script_dir, "config.ini")
-    cfg = mycfg.MyConfig(cfg_file)
-    ser_params, ws_params = cfg.read_config()
+    # find out this script's directory
+    SCRIPT_DIR = os.path.dirname(sys.argv[0])
+    if len(SCRIPT_DIR) < 1:
+        SCRIPT_DIR = '.' + os.sep
 
-    # setup websockets with ip and port
-    setup_ws(**ws_params)
+    # user defined ini file
+    CFGFN = os.path.join(SCRIPT_DIR, "config.ini")
 
-    # global constants
-    ON = 1
-    OFF = 2
+    cfg = mycfg.MyConfig(CFGFN)
+    ser_params, web_params = cfg.read_config()
 
-    # # LCR TH2816B connection
-    # lcr_meter = SerialConnection('lcr', "/dev/serial0", timeout=1)
-    # lcr_meter.daemon = True
-    # lcr_meter.start()
+    # setup ip and port
+    setup_ws(**web_params)
 
-    # # arduino connection
-    # valves_arduino = ArduinoConnection('valves', Board.MEGA, id=1)
-    # sensors_arduino = ArduinoConnection('sensors', Board.UNO, id=2)
-
-    # # run the experiment
-    # experiment()
-
-    # tornado.options.parse_command_line()
+    # tornado setup
     handlers = [
         (r"/", IndexHandler),
         (r"/page", PageHandler),
+        (r"/ws", WebSocketHandler),
+        (r"/form", FormHandler),
         (r"/static/(.*)", tornado.web.StaticFileHandler,
          {'path':  './static'}),
-        (r"/ws", WebSocketHandler),
-        (r"/form", FormHandler)
     ]
+    settings = dict(
+        template_path=os.path.join(os.path.dirname(__file__), "templates"),
+        static_path=os.path.join(os.path.dirname(__file__), "static"),
+        autoreload=True,
+        debug=True
+    )
     app = tornado.web.Application(
         handlers=handlers,
-        debug=True,
-        autoreload=True
+        settings=settings
     )
     http_server = tornado.httpserver.HTTPServer(app)
-    http_server.listen(ws_params['web_port'])
-    print("INFO: Web server listening on {web_ip}:{web_port}".format(
-        **ws_params))
+    http_server.listen(web_params['web_port'])
+    ColorPrint.print_bold("Web server listening on http://{web_ip}:{web_port}".format(
+        **web_params))
 
     main_loop = tornado.ioloop.IOLoop().current()
+
     # adjust the scheduler_interval according to the frames sent by the serial port
-    scheduler_interval = 100
+    SCHEDULER_INTERVAL = 100
     scheduler = tornado.ioloop.PeriodicCallback(
-        check_queue, scheduler_interval)
+        check_queue, SCHEDULER_INTERVAL)
+
     try:
         scheduler.start()
         main_loop.start()
@@ -244,10 +276,6 @@ if __name__ == '__main__':
     finally:
         input_queue.close()
         output_queue.close()
-        lcr_meter.terminate()
-        lcr_meter.join()
         scheduler.stop()
         http_server.stop()
-        # for handler in handlers:
-        #    handler.aclose()
         print('\nINFO: Web server stopped')

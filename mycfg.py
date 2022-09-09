@@ -31,19 +31,20 @@ class MyConfig:
         Creates an initial config file with default values
         '''
         self.config = ConfigParser()
-        self.config.add_section("config")
-        self.config.set("config", "port", "/dev/serial0")
-        self.config.set("config", "baudrate", "9600")
-        self.config.set("config", "parity", str(serial.PARITY_NONE))
-        self.config.set("config", "stopbits", str(serial.STOPBITS_ONE))
-        self.config.set("config", "bytesize", str(serial.EIGHTBITS))
-        self.config.set("config", "timeout", "1")
-        self.config.set("config", "web_port", "8080")
-        self.config.set("config", "web_ip", get_ip())
+        self.config.add_section("serial")
+        self.config.set("serial", "port", "/dev/serial0")
+        self.config.set("serial", "baudrate", "9600")
+        self.config.set("serial", "parity", str(serial.PARITY_NONE))
+        self.config.set("serial", "stopbits", str(serial.STOPBITS_ONE))
+        self.config.set("serial", "bytesize", str(serial.EIGHTBITS))
+        self.config.set("serial", "timeout", "1")
+        self.config.add_section("web")
+        self.config.set("web", "port", "8080")
+        self.config.set("web", "ip", get_ip())
         self.config.add_section("experiment")
         self.config.set("experiment", "valves_loop", "4")
-        self.config.set("experiment", "sensors_loop", "10")
-        self.config.set("experiment", "sensors_duration", "2")
+        self.config.set("experiment", "sensors_loop", "8")
+        self.config.set("experiment", "sensors_duration", "3")
         self.config.add_section("arduino1")
         self.config.set("arduino1", "model", "MEGA")
         self.config.set("arduino1", "sensors", ";;;;;;;")
@@ -91,16 +92,16 @@ class MyConfig:
 
     def read_config(self):
         ser_params = {
-            'port': self.get_setting("config", "port"),
-            'baudrate': int(self.get_setting("config", "baudrate")),
-            'parity': str(self.get_setting("config", "parity")),
-            'stopbits': int(self.get_setting("config", "stopbits")),
-            'bytesize': int(self.get_setting("config", "bytesize")),
-            'timeout': int(self.get_setting("config", "timeout"))
+            'port': self.get_setting("serial", "port"),
+            'baudrate': int(self.get_setting("serial", "baudrate")),
+            'parity': str(self.get_setting("serial", "parity")),
+            'stopbits': int(self.get_setting("serial", "stopbits")),
+            'bytesize': int(self.get_setting("serial", "bytesize")),
+            'timeout': int(self.get_setting("serial", "timeout"))
         }
-        ws_params = {
-            'web_port': int(self.get_setting("config", "web_port")),
-            'web_ip': self.get_setting("config", "web_ip")
+        web_params = {
+            'web_port': int(self.get_setting("web", "port")),
+            'web_ip': self.get_setting("web", "ip")
         }
 
-        return ser_params, ws_params
+        return ser_params, web_params

@@ -23,17 +23,34 @@
   <!-- ======== sidebar-nav start =========== -->
   <aside class="sidebar-nav-wrapper">
     <div class="navbar-logo">
-      <a href="/">
-        <img src="static/images/logo/logo.svg" alt="logo" />
+      <a href="/page?id=0">
+        <img src="static/images/logo/logo.svg" alt="logo" width="120"/>
       </a>
     </div>
     <nav class="sidebar-nav">
       <ul>
-        <li class="nav-item">
-          <a href="/" class="active" data-i18n="menu.index"></a>
-        </li>
         <li class="nav-item nav-item-has-children">
           <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_1" aria-controls="ddmenu_1"
+            aria-expanded="false" aria-label="Toggle navigation">
+            <span class="icon">
+              <svg width="22" height="22" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path
+                  d="M12.8334 1.83325H5.50008C5.01385 1.83325 4.54754 2.02641 4.20372 2.37022C3.8599 2.71404 3.66675 3.18036 3.66675 3.66659V18.3333C3.66675 18.8195 3.8599 19.2858 4.20372 19.6296C4.54754 19.9734 5.01385 20.1666 5.50008 20.1666H16.5001C16.9863 20.1666 17.4526 19.9734 17.7964 19.6296C18.1403 19.2858 18.3334 18.8195 18.3334 18.3333V7.33325L12.8334 1.83325ZM16.5001 18.3333H5.50008V3.66659H11.9167V8.24992H16.5001V18.3333Z" />
+              </svg>
+            </span>
+            <span class="text" data-i18n="menu.experiment"></span>
+          </a>
+          <ul id="ddmenu_1" class="collapse show dropdown-nav">
+            <li>
+              <a href="/page?id=0" data-i18n="menu.index"></a>
+            </li>
+            <li>
+              <a href="/page?id=3" class="active" data-i18n="menu.page3"></a>
+            </li>
+          </ul>
+        </li>
+        <li class="nav-item nav-item-has-children">
+          <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_2" aria-controls="ddmenu_2"
             aria-expanded="true" aria-label="Toggle navigation">
             <span class="icon">
               <svg width="22" height="22" viewBox="0 0 22 22">
@@ -43,7 +60,7 @@
             </span>
             <span class="text" data-i18n="menu.config"></span>
           </a>
-          <ul id="ddmenu_1" class="collapse show dropdown-nav">
+          <ul id="ddmenu_2" class="collapse dropdown-nav">
             <li>
               <a href="/page?id=1" data-i18n="menu.page1"></a>
             </li>
@@ -91,6 +108,16 @@
     <!-- ========== tab components start ========== -->
     <section class="tab-components">
       <div class="container-fluid">
+
+        <div class="title-wrapper pt-30">
+          <div class="row align-items-center">
+            <div class="col-md-8">
+              <div class="title mb-30">
+                <h6 data-i18n="page3.title"></h6>
+              </div>
+            </div>
+          </div>
+        </div>
         <div class="form-elements-wrapper">
           <div class="row">
             <div class="col-lg-6">
@@ -106,6 +133,7 @@
               </div>
 
               <form id="sent" class="row g-2">
+                <input type="hidden" name="page_id" id="page_id" value="3">
                 <div class="row">
                   <div class="col-lg-12">
                     <div class="card-style mb-30">
@@ -179,10 +207,7 @@
                 justify-content-center justify-content-md-end
               ">
               <p class="text-sm">
-                Designed and developed by bgeneto using
-                <a href="https://plainadmin.com" rel="nofollow" target="_blank">
-                  PlainAdmin
-                </a>
+                &copy; 2022-{{__year__}} bgeneto (v{{__version__}})
               </p>
             </div>
           </div>

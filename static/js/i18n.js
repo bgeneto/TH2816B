@@ -21,18 +21,18 @@ $(function () {
     // init i18next
     // for all options read: https://www.i18next.com/overview/configuration-options
     .init({
-      debug: true,
-      fallbackLng: 'en',
+      debug: false,
+      fallbackLng: 'pt',
       resources: {
         en: {
           translation: {
             head: {
               title: 'TH2816B LCR Meter WebGUI',
-              description: 'Web interface for TH2816B LCR Meter data processing'
+              description: 'Web interface for experiments with data acquisition via TH2816B LCR Meter'
             },
             intro: {
               title: 'TH2816B LCR Meter WebGUI',
-              subtitle: 'Web interface for TH2816B LCR Meter data processing'
+              subtitle: 'Web interface for experiments with data acquisition via TH2816B LCR Meter'
             },
             promo: {
               title: 'Warning',
@@ -56,9 +56,19 @@ $(function () {
             menu: {
               pages: 'Pages',
               config: 'Configuration',
-              index: 'TH2816B I/O',
+              index: 'Start',
               page1: 'Experiment',
-              page2: 'Arduino'
+              page2: 'Arduino',
+              page3: 'Communication',
+              experiment: 'Experiment',
+            },
+            index: {
+              title: 'New Experiment',
+              exp_name: 'Experiment Name',
+              exp_desc: 'Describe your experiment',
+              button: 'Start Experiment',
+              clr_button: 'Clear',
+              output: 'Data output',
             },
             page1: {
               title: 'Experiment Configuration',
@@ -74,6 +84,7 @@ $(function () {
             },
             page2: {
               title: 'Arduino Config',
+              text: "Don't forget to configure the <a href='/page?id=1'>experiment</a> (and the <a href='/page?id=2'>arduino</a>) before starting!",
               text: 'Inform below which Arduino pins are configured for each sensor (or valve).<br> Leave blank to not configure an arduino, sensor, or valve.<br>',
               num_sensors: 'Number of Sensors',
               sensor1: 'Sensor 1',
@@ -104,6 +115,9 @@ $(function () {
               err_msg: 'Could not configure arduinos!',
               arduino_model: 'Arduino Model',
             },
+            page3: {
+              title: 'Use this page to send commands to and receive data from the TH2816B LCR Meter',
+            },
             configure: {
               button: 'Configure'
             }
@@ -113,11 +127,11 @@ $(function () {
           translation: {
             head: {
               title: 'TH2816B LCR Meter WebGUI',
-              description: 'Interface web para aquisição de dados do LCR Meter TH2816B'
+              description: 'Interface web para experimentação com aquisição de dados via LCR Meter TH2816B'
             },
             intro: {
               title: 'TH2816B LCR Meter WebGUI',
-              subtitle: 'Interface web para aquisição de dados do LCR Meter TH2816B'
+              subtitle: 'Interface web para experimentação com aquisição de dados via LCR Meter TH2816B'
             },
             promo: {
               title: 'Aviso',
@@ -141,9 +155,20 @@ $(function () {
             menu: {
               pages: 'Páginas',
               config: 'Configuração',
-              index: 'TH2816B E/S',
+              index: 'Iniciar',
               page1: 'Experimento',
-              page2: 'Arduino'
+              page2: 'Arduino',
+              page3: 'Comunicação',
+              experiment: 'Experimento',
+            },
+            index: {
+              title: 'Novo Experimento',
+              text: 'Não esqueça de configurar o <a href="/page?id=1">experimento</a> (e o <a href="/page?id=2">arduino</a>) antes de iniciar!',
+              exp_name: 'Nome do Experimento',
+              exp_desc: 'Descreva seu experimento',
+              button: 'Iniciar Experimento',
+              clr_button: 'Limpar',
+              output: 'Saída de dados',
             },
             page1: {
               title: 'Configuração do Experimento',
@@ -188,6 +213,9 @@ $(function () {
               ok_msg_title: 'Sucesso',
               err_msg: 'Não foi possível configurar o arduino!',
               arduino_model: 'Modelo do Arduino',
+            },
+            page3: {
+              title: 'Use esta página para enviar comandos e visualizar os dados capturados pelo medidor LCR TH2816B',
             },
             configure: {
               button: 'Configure'
