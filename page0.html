@@ -46,6 +46,9 @@
                             <a href="/page?id=0" class="active" data-i18n="menu.index"></a>
                         </li>
                         <li>
+                            <a href="/experiments/index.html" data-i18n="menu.page4"></a>
+                        </li>
+                        <li>
                             <a href="/page?id=3" data-i18n="menu.page3"></a>
                         </li>
                     </ul>
@@ -131,7 +134,7 @@
                                 <div class="card-style mb-30">
                                     <div class="input-style-1">
                                         <label class="uppercase" data-i18n="index.exp_name"></label>
-                                        <input type="text" id="exp_name" data-i18n="[placeholder]index.exp_desc" />
+                                        <input type="text" name="exp_name" id="exp_name" data-i18n="[placeholder]index.exp_desc" />
                                     </div>
                                     <div class="mb-3">
                                         <div class="button-group d-flex justify-content-left flex-wrap">
@@ -202,7 +205,54 @@
         <!-- ========== footer end =========== -->
 
     </main>
-
+  <!-- modals -->
+  <div id="modalContainer"></div>
+  <div class="modal fade" id="cmdModal" tabindex="-1" aria-labelledby="cmdModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="cmdModalLabel">INFO</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body" data-i18n="command.sent">
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="modal fade" id="errModal" tabindex="-1" aria-labelledby="errModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="errModalLabel">ERROR</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body" data-i18n="command.error">
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-danger" data-bs-dismiss="modal">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="modal fade" id="okModal" tabindex="-1" aria-labelledby="okModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="okModalLabel" data-i18n="page1.ok_msg_title"></h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body" data-i18n="index.ok_msg">
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-success" data-bs-dismiss="modal">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <!-- end modals -->
     <!-- ========= All Javascript files ======== -->
     <script src="static/js/bootstrap.bundle.min.js"></script>
     <script src="static/js/fullcalendar.js"></script>

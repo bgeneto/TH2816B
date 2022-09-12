@@ -45,6 +45,9 @@
               <a href="/page?id=0" class="active" data-i18n="menu.index"></a>
             </li>
             <li>
+              <a href="/experiments/index.html" data-i18n="menu.page4"></a>
+            </li>
+            <li>
               <a href="/page?id=3" data-i18n="menu.page3"></a>
             </li>
           </ul>
@@ -559,17 +562,6 @@
     });
   };
   $(document).ready(function () {
-    // get url parameters
-    let searchParams = new URLSearchParams(window.location.search);
-    if (searchParams.has('status')) {
-      let param = searchParams.get('status');
-      if (param == 1) {
-        $('#okModal').modal('show');
-      } else {
-        $('#errModal').modal('show');
-      }
-    }
-
     $('label.help').each(function () {
       let link = $(this).attr('for');
       $('#modalContainer').append('<div id="modal_' + link + '"></div>');

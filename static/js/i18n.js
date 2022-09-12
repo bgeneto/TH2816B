@@ -56,10 +56,11 @@ $(function () {
             menu: {
               pages: 'Pages',
               config: 'Configuration',
-              index: 'Start',
+              index: 'New Experiment',
               page1: 'Experiment',
               page2: 'Arduino',
               page3: 'Communication',
+              page4: 'Results',
               experiment: 'Experiment',
             },
             index: {
@@ -69,6 +70,7 @@ $(function () {
               button: 'Start Experiment',
               clr_button: 'Clear',
               output: 'Data output',
+              ok_msg: 'Experiment started successfully!',
             },
             page1: {
               title: 'Experiment Configuration',
@@ -155,10 +157,11 @@ $(function () {
             menu: {
               pages: 'Páginas',
               config: 'Configuração',
-              index: 'Iniciar',
+              index: 'Novo Experimento',
               page1: 'Experimento',
               page2: 'Arduino',
               page3: 'Comunicação',
+              page4: 'Resultados',
               experiment: 'Experimento',
             },
             index: {
@@ -169,6 +172,7 @@ $(function () {
               button: 'Iniciar Experimento',
               clr_button: 'Limpar',
               output: 'Saída de dados',
+              ok_msg: 'Experimento iniciado com sucesso!',
             },
             page1: {
               title: 'Configuração do Experimento',

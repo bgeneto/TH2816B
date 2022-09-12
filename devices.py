@@ -36,8 +36,8 @@ __maintainer__ = "Bernhard Enders"
 __email__ = "b g e n e t o @ g m a i l d o t c o m"
 __copyright__ = "Copyright 2022, Bernhard Enders"
 __license__ = "GPL"
-__version__ = "1.1.7"
-__date__ = "20220909"
+__version__ = "0.1.8"
+__date__ = "20220912"
 __status__ = "Development"
 
 # global constants
@@ -207,7 +207,7 @@ class ArduinoConnection:
         # data structures to store the readings
         sensors_lst = [f'S{idx}' for idx in sensors_pos]
         sensors_dict = {sensor: copy.deepcopy(
-            params) for sensor in sensors_lst}
+            params) for sensor in copy.deepcopy(sensors_lst)}
 
         # received data lists
         #str_lst = ['']*len(sensors)
@@ -383,28 +383,6 @@ def shutdown(lcr_meter, arduinos):
     except Exception as exc:
         traceback.print_exc(exc)
 
-
-def create_output_dir():
-    '''create data output directory'''
-    # base output directory
-    base_dir = 'experiments'
-
-    # date and time as subdirectory
-    timestr = time.strftime("%Y-%m-%d %Hh%Mm%Ss")
-
-    # create output directory if not exists
-    output_dir = os.path.abspath(os.path.join(base_dir, timestr))
-    if not os.path.exists(output_dir):
-        try:
-            os.makedirs(output_dir)
-        except Exception as _:
-            ColorPrint.print_fail("Unable to create output directory!")
-            # shutdown()
-            sys.exit(1)
-
-    return output_dir
-
-
 def run_experiment(lcr_meter, arduinos, vloop, sloop, stime):
     '''run the experiment'''
 
@@ -434,10 +412,10 @@ def run_experiment(lcr_meter, arduinos, vloop, sloop, stime):
     # store retrieved data in a list of dictionaries
     data = []
     valves_lst = [f'V{idx}' for idx in valves_pos]
-    valves_dict = {key: {} for key in valves_lst}
 
     # main experiment loop
     for _ in range(vloop):
+        valves_dict = {key: copy.deepcopy({}) for key in copy.deepcopy(valves_lst)}
         for vpos in valves_pos:
             arduino_valves.switch_onoff(arduino_valves.valves_pins, [vpos])
             valves_dict[f'V{vpos}'] = arduino_sensors.sensors_loop(lcr_meter,
@@ -447,31 +425,7 @@ def run_experiment(lcr_meter, arduinos, vloop, sloop, stime):
         # append to list only after a valve cycle is completed
         data.append(valves_dict)
 
-    # create output directory if not exists
-    output_dir = create_output_dir()
-
-    # save all collected data to a single json file
-    with open(os.path.join(output_dir, 'results.json'), 'w', encoding='UTF-8') as outfile:
-        json.dump(data, outfile, ensure_ascii=False)
-
-    # convert to dataframe
-    #data_df = pd.json_normalize(data)
-
-    # save data to several csv files
-    # for valve in valves:
-    # for param in ['primary', 'secondary']:
-    # print(data[valve][0][param])
-    # write two files with all sensors data
-    # sensors_df = pd.concat(
-    #    [x[param] for x in data[valve][:]], ignore_index=True, axis=1)
-    # fname = os.path.join(
-    #    output_dir, f'v{valve}_{param}_all_sensors.csv')
-    #sensors_df.to_csv(fname, index=False)
-    #    for sensor in sensors:
-    #        # write one
-    #        fname = os.path.join(output_dir, f'v{valve}s{sensor}.csv')
-    #        data[valve][sensor].to_csv(fname, index=False)
-
+    return data
 
 def arduinos_connect(cfg) -> Dict[str, ArduinoConnection]:
     '''connect to arduinos'''

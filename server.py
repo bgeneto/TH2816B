@@ -3,10 +3,11 @@
 """TH2816B LCR Meter WebGUI.
 Web interface for TH2816B LCR Meter data processing.
 Author:   b g e n e t o @ g m a i l . c o m
-History:  v1.0.0  Initial release
-          v1.0.1  Configure options via config (ini) file
+History:  v0.0.1  Initial release
+          v0.0.2  Configure options via config (ini) file
 """
 
+import csv
 import json
 import multiprocessing
 import os
@@ -31,8 +32,8 @@ __email__ = "b g e n e t o @ g m a i l d o t c o m"
 __copyright__ = "Copyright 2022, Bernhard Enders"
 __license__ = "GPL"
 __status__ = "Development"
-__version__ = "1.1.2"
-__date__ = "20220909"
+__version__ = "0.1.3"
+__date__ = "20220912"
 __year__ = date.today().year
 
 clients = []
@@ -181,12 +182,79 @@ class FormHandler(tornado.web.RequestHandler):
         lcr = SerialConnection(cfg)
 
         # run the experiment
+        data = []
         try:
-            run_experiment(lcr, arduinos, **params)
+            data = run_experiment(lcr, arduinos, **params)
         except Exception as exp:
             print(str(exp))
         finally:
             shutdown(lcr, arduinos)
+
+        # create output directory if not exists
+        output_dir = create_output_dir()
+
+        # get experiment name from form and write to file
+        try:
+            exp_name = str(self.get_body_arguments('exp_name')[0])
+            if len(exp_name) > 0:
+                with open(os.path.join(output_dir, 'name.txt'), 'w', encoding='UTF-8') as fp:
+                    fp.write(exp_name)
+        except:
+            pass
+
+        # save all collected data to a single json file
+        with open(os.path.join(output_dir, 'results.json'), 'w', encoding='ISO-8859-1') as outfile:
+            json.dump(data, outfile, indent=2, ensure_ascii=True)
+
+        # write csv file for each sensor
+        vkeys = [f'V{idx}' for idx in range(len(data[0]))]
+        skeys = [f'S{idx}' for idx in range(len(data[0]['V0']))]
+        primary = {vkey: {} for vkey in copy.deepcopy(vkeys)}
+        secondary = {vkey: {} for vkey in copy.deepcopy(vkeys)}
+
+        for idx in range(len(data)):
+            for valve in data[idx].keys():
+                for sensor in data[idx][valve].keys():
+                    if sensor in primary[valve]:
+                        primary[valve][sensor] += data[idx][valve][sensor]['primary']
+                        secondary[valve][sensor] += data[idx][valve][sensor]['secondary']
+                    else:
+                        primary[valve][sensor] = data[idx][valve][sensor]['primary']
+                        secondary[valve][sensor] = data[idx][valve][sensor]['secondary']
+
+        for valve in primary.keys():
+            with open(os.path.join(output_dir, f'{valve}-sensors-primary.csv'), 'w', encoding='UTF-8') as valves_file:
+                writer = csv.DictWriter(valves_file, fieldnames=skeys)
+                writer.writerows(primary[valve])
+                for sensor in primary[valve].keys():
+                    with open(os.path.join(output_dir, f'{valve}-{sensor}-primary.csv'), 'w', encoding='UTF-8') as sensors_file:
+                        writer = csv.writer(sensors_file)
+                        writer.writerows(primary[valve][sensor])
+
+        # convert to dataframe
+        #data_df = pd.json_normalize(data)
+
+        # save data to several csv files
+        # for valve in valves:
+        # for param in ['primary', 'secondary']:
+        # print(data[valve][0][param])
+        # write two files with all sensors data
+        # sensors_df = pd.concat(
+        #    [x[param] for x in data[valve][:]], ignore_index=True, axis=1)
+        # fname = os.path.join(
+        #    output_dir, f'v{valve}_{param}_all_sensors.csv')
+        #sensors_df.to_csv(fname, index=False)
+        #    for sensor in sensors:
+        #        # write one
+        #        fname = os.path.join(output_dir, f'v{valve}s{sensor}.csv')
+        #        data[valve][sensor].to_csv(fname, index=False)
+
+        # update experiment directory index pages
+
+        try:
+            os.system(f"{SCRIPT_DIR}/indexer.py -r {SCRIPT_DIR}/experiments/")
+        except Exception as exp:
+            ColorPrint.print_fail(str(exp))
 
 
 class WebSocketHandler(tornado.websocket.WebSocketHandler):
@@ -237,6 +305,27 @@ def setup_ws(web_ip, web_port):
         js.write(data)
 
 
+def create_output_dir():
+    '''create data output directory'''
+    # base output directory
+    base_dir = 'experiments'
+
+    # date and time as subdirectory
+    timestr = time.strftime("%Y-%m-%d %Hh%Mm%Ss")
+
+    # create output directory if not exists
+    output_dir = os.path.abspath(os.path.join(SCRIPT_DIR, base_dir, timestr))
+    if not os.path.exists(output_dir):
+        try:
+            os.makedirs(output_dir)
+        except Exception as _:
+            ColorPrint.print_fail("Unable to create output directory!")
+            # shutdown()
+            sys.exit(1)
+
+    return output_dir
+
+
 if __name__ == '__main__':
     # find out this script's directory
     SCRIPT_DIR = os.path.abspath(os.path.dirname(sys.argv[0]))
@@ -253,10 +342,10 @@ if __name__ == '__main__':
     setup_ws(**web_params)
 
     # start the serial worker in background (as a deamon)
-    #sp = serialworker.SerialProcess(
+    # sp = serialworker.SerialProcess(
     #    input_queue, output_queue, serial_port, baud_rate, timeout)
     #sp.daemon = True
-    #sp.start()
+    # sp.start()
 
     # tornado setup
     handlers = [
@@ -265,11 +354,12 @@ if __name__ == '__main__':
         (r"/ws", WebSocketHandler),
         (r"/form", FormHandler),
         (r"/static/(.*)", tornado.web.StaticFileHandler,
-         {'path':  './static'}),
+         {'path': './static'}),
+        (r"/experiments/(.*)", tornado.web.StaticFileHandler,
+         {'path': './experiments', "default_filename": "index.html"}),
     ]
     settings = dict(
         template_path=os.path.join(os.path.dirname(__file__), "templates"),
-        static_path=os.path.join(os.path.dirname(__file__), "static"),
         autoreload=True,
         debug=True
     )
