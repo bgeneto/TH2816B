@@ -8,6 +8,7 @@ History:  v0.0.1  Initial release
 """
 
 import csv
+from genericpath import isfile
 import json
 import multiprocessing
 import os
@@ -26,7 +27,6 @@ import tornado.web
 import tornado.websocket
 
 import mycfg
-from colorprint import ColorPrint
 from devices import *
 
 __author__ = "Bernhard Enders"
@@ -35,8 +35,8 @@ __email__ = "b g e n e t o @ g m a i l d o t c o m"
 __copyright__ = "Copyright 2022, Bernhard Enders"
 __license__ = "GPL"
 __status__ = "Development"
-__version__ = "0.1.3"
-__date__ = "20220912"
+__version__ = "0.1.4"
+__date__ = "20220913"
 __year__ = date.today().year
 
 clients = []
@@ -91,6 +91,32 @@ class PageHandler(tornado.web.RequestHandler):
         self.render(f'page{id}.html', **params)
 
 
+class AjaxHandler(tornado.web.RequestHandler):
+    def post(self):
+        try:
+            data = json.loads(self.request.body)
+        except:
+            self.write(json.dumps({'status': 'ok'}))
+            self.finish()
+            return
+
+        # check if log file exists
+        log = ''
+        if os.path.isfile(data['fname']):
+            with open(data['fname'], 'r', encoding='UTF-8') as f:
+                log = f.read()
+
+        # json response
+        response_to_send = {}
+        response_to_send['status'] = 'ok'
+        response_to_send['contents'] = log
+        self.write(json.dumps(response_to_send))
+        self.finish()
+        return
+
+    get = post
+
+
 class FormHandler(tornado.web.RequestHandler):
 
     _thread_pool = tornado.concurrent.futures.ThreadPoolExecutor(max_workers=1)
@@ -111,7 +137,7 @@ class FormHandler(tornado.web.RequestHandler):
             elif page_id == 2:
                 self.arduino_config()
         except Exception as exp:
-            ColorPrint.print_fail(str(exp))
+            print(str(exp))
             self.redirect(f'page?id={page_id}&status=2')
             return
 
@@ -199,9 +225,10 @@ class FormHandler(tornado.web.RequestHandler):
         # get experiment name from form and write to file
         try:
             exp_name = str(self.get_body_arguments('exp_name')[0])
-            if len(exp_name) > 0:
-                with open(os.path.join(output_dir, 'name.txt'), 'w', encoding='UTF-8') as fp:
-                    fp.write(exp_name)
+            if len(exp_name) < 1:
+                exp_name = 'No name'
+            with open(os.path.join(output_dir, '00-desc.txt'), 'w', encoding='UTF-8') as fp:
+                fp.write(exp_name)
         except:
             pass
 
@@ -234,12 +261,10 @@ class FormHandler(tornado.web.RequestHandler):
                     output_dir, f'{valve}.{param}.csv'))
 
         # update experiment directory index pages
-        try:
-            _ = subprocess.Popen([sys.executable, f"{SCRIPT_DIR}/indexer.py -r {SCRIPT_DIR}/experiments"],
-                                 stdout=subprocess.PIPE,
-                                 stderr=subprocess.STDOUT)
-        except Exception as exp:
-            ColorPrint.print_fail(str(exp))
+        import indexer
+        parser = indexer.add_args()
+        args = parser.parse_args(['experiments', '--recursive'])
+        indexer.process_dir(args.top_dir, args)
 
 
 class WebSocketHandler(tornado.websocket.WebSocketHandler):
@@ -304,7 +329,7 @@ def create_output_dir():
         try:
             os.makedirs(output_dir)
         except Exception as _:
-            ColorPrint.print_fail("Unable to create output directory!")
+            print("Unable to create output directory!")
             # shutdown()
             sys.exit(1)
 
@@ -338,6 +363,7 @@ if __name__ == '__main__':
         (r"/page", PageHandler),
         (r"/ws", WebSocketHandler),
         (r"/form", FormHandler),
+        (r"/ajax", AjaxHandler),
         (r"/static/(.*)", tornado.web.StaticFileHandler,
          {'path': './static'}),
         (r"/experiments/(.*)", tornado.web.StaticFileHandler,
@@ -354,7 +380,7 @@ if __name__ == '__main__':
     )
     http_server = tornado.httpserver.HTTPServer(app)
     http_server.listen(web_params['web_port'])
-    ColorPrint.print_bold("Web server listening on http://{web_ip}:{web_port}".format(
+    print("Web server listening on http://{web_ip}:{web_port}".format(
         **web_params))
 
     main_loop = tornado.ioloop.IOLoop().current()
@@ -376,4 +402,4 @@ if __name__ == '__main__':
         output_queue.close()
         scheduler.stop()
         http_server.stop()
-        ColorPrint.print_bold('\nWeb server stopped!')
+        print('\nWeb server stopped!')
