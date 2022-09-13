@@ -46,3 +46,23 @@ label.uppercase {
 .input-style-4 textarea[type="time"] {
   background: transparent;
 }
+
+div.resizable {
+  background: rgba(255, 255, 255, 0.5);
+  font-size: 2em;
+  border: 1px solid black;
+  overflow: hidden;
+  resize: both;
+  width: 160px;
+  height: 120px;
+  min-width: 120px;
+  min-height: 90px;
+  max-width: 400px;
+  max-height: 300px;
+}
+
+div.log_output {
+  overflow-y: scroll;
+  overflow-x: hidden;
+  max-height: 250px;
+}

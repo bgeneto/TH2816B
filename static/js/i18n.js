@@ -65,7 +65,7 @@ $(function () {
             },
             index: {
               title: 'New Experiment',
-              exp_name: 'Experiment Name',
+              exp_name: 'Description of the Experiment',
               exp_desc: 'Describe your experiment',
               button: 'Start Experiment',
               clr_button: 'Clear',
@@ -167,7 +167,7 @@ $(function () {
             index: {
               title: 'Novo Experimento',
               text: 'Não esqueça de configurar o <a href="/page?id=1">experimento</a> (e o <a href="/page?id=2">arduino</a>) antes de iniciar!',
-              exp_name: 'Nome do Experimento',
+              exp_name: 'Descrição do Experimento',
               exp_desc: 'Descreva seu experimento',
               button: 'Iniciar Experimento',
               clr_button: 'Limpar',

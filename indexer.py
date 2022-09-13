@@ -2,7 +2,7 @@
 
 # Indexer v.1.0.1
 # Author: Josh Brunty (josh dot brunty at marshall dot edu)
-# DESCRIPTION: This script generates an .html index  of files within a directory (recursive is OFF by default). Start from current dir or from folder passed as first positional argument. Optionally filter by file types with --filter "*.py". 
+# DESCRIPTION: This script generates an .html index  of files within a directory (recursive is OFF by default). Start from current dir or from folder passed as first positional argument. Optionally filter by file types with --filter "*.py".
 
 # -handle symlinked files and folders: displayed with custom icons
 # By default only the current folder is processed.
@@ -169,12 +169,12 @@ def process_dir(top_dir, opts):
     .icon {
         margin-right: 5px;
     }
-    tr.clickable { 
-        cursor: pointer; 
-    } 
-    tr.clickable a { 
-        display: block; 
-    } 
+    tr.clickable {
+        cursor: pointer;
+    }
+    tr.clickable a {
+        display: block;
+    }
     @media (max-width: 600px) {
         * {
             font-size: 1.06rem;
@@ -241,7 +241,7 @@ def process_dir(top_dir, opts):
     </svg>
 <header>
     <h1>"""
-                     f'{path_top_dir.name}'
+                     f'{path_top_dir.name} <span id="desc_text"></span>'
                      """</h1>
                  </header>
                  <main>
@@ -270,26 +270,43 @@ def process_dir(top_dir, opts):
                  """)
 
     # sort dirs first
-    sorted_entries = sorted(path_top_dir.glob(glob_patt), key=lambda p: (p.is_file(), p.name))
+    sorted_entries = sorted(path_top_dir.glob(
+        glob_patt), key=lambda p: (p.is_file(), p.name))
+
+    # script tag
+    script_tag = ''
 
     entry: Path
     for entry in sorted_entries:
-
         # don't include index.html in the file listing
         if entry.name.lower() == opts.output_file.lower():
             continue
 
+        # add page/experiment description
+        if 'desc.txt' in entry.name.lower():
+            with open(entry, 'r', encoding="UTF-8") as f:
+                desc = f.read()
+            script_tag = """
+<script>
+    document.addEventListener("DOMContentLoaded", function(event) {
+    var elem = document.querySelector('#desc_text');
+    elem.textContent = ' - """f'{desc}'"""';
+    });
+</script>"""
+
+        # process directories if recursive option is set
         if entry.is_dir() and opts.recursive:
             process_dir(entry, opts)
 
         # From Python 3.6, os.access() accepts path-like objects
         if (not entry.is_symlink()) and not os.access(str(entry), os.W_OK):
-            print(f"*** WARNING *** entry {entry.absolute()} is not writable! SKIPPING!")
+            print(
+                f"*** WARNING *** entry {entry.absolute()} is not writable! SKIPPING!")
             continue
         if opts.verbose:
             print(f'{entry.absolute()}')
 
-        size_bytes = -1  ## is a folder
+        size_bytes = -1  # is a folder
         size_pretty = '&mdash;'
         last_modified = '-'
         last_modified_human_readable = '-'
@@ -300,7 +317,8 @@ def process_dir(top_dir, opts):
                 size_pretty = pretty_size(size_bytes)
 
             if entry.is_dir() or entry.is_file():
-                last_modified = datetime.datetime.fromtimestamp(entry.stat().st_mtime).replace(microsecond=0)
+                last_modified = datetime.datetime.fromtimestamp(
+                    entry.stat().st_mtime).replace(microsecond=0)
                 last_modified_iso = last_modified.isoformat()
                 last_modified_human_readable = last_modified.strftime("%c")
 
@@ -347,6 +365,7 @@ def process_dir(top_dir, opts):
         </table>
     </div>
 </main>
+"""f'{script_tag}'"""
 </body>
 </html>""")
     if index_file:
@@ -382,7 +401,7 @@ def pretty_size(bytes, units=UNITS_MAPPING):
     return str(amount) + suffix
 
 
-if __name__ == "__main__":
+def add_args():
     parser = argparse.ArgumentParser(description='''DESCRIPTION: This script generates an .html index  of files within a directory (recursive is OFF by default). Start from current dir or from folder passed as first positional argument. Optionally filter by file types with --filter "*.py"
 Email josh dot brunty at marshall dot edu for additional help. ''')
 
@@ -413,5 +432,10 @@ Email josh dot brunty at marshall dot edu for additional help. ''')
                              ' verbosely list every processed file',
                         required=False)
 
+    return parser
+
+
+if __name__ == "__main__":
+    parser = add_args()
     config = parser.parse_args(sys.argv[1:])
     process_dir(config.top_dir, config)

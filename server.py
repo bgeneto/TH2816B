@@ -193,6 +193,9 @@ class FormHandler(tornado.web.RequestHandler):
     @tornado.concurrent.run_on_executor(executor='_thread_pool')
     def start_experiment(self):
         '''start a new experiment'''
+        import indexer
+        import plotly
+        import plotly.express as px
 
         # ensures that this variable is accessible in the other thread
         cfg = mycfg.MyConfig(CFGFN)
@@ -220,14 +223,14 @@ class FormHandler(tornado.web.RequestHandler):
             shutdown(lcr, arduinos)
 
         # create output directory if not exists
-        output_dir = create_output_dir()
+        output_dir = create_output_dir(['primary', 'secondary'])
 
         # get experiment name from form and write to file
         try:
             exp_name = str(self.get_body_arguments('exp_name')[0])
             if len(exp_name) < 1:
                 exp_name = 'No name'
-            with open(os.path.join(output_dir, '00-desc.txt'), 'w', encoding='UTF-8') as fp:
+            with open(os.path.join(output_dir, 'desc.txt'), 'w', encoding='UTF-8') as fp:
                 fp.write(exp_name)
         except:
             pass
@@ -236,15 +239,26 @@ class FormHandler(tornado.web.RequestHandler):
         with open(os.path.join(output_dir, 'results.json'), 'w', encoding='ISO-8859-1') as outfile:
             json.dump(data, outfile, indent=2, ensure_ascii=True)
 
+        # convert dara to dataframe
         data_df = pd.json_normalize(data)
+
+        # write individual csv files for each sensor
         for valve in data[0].keys():
             for sensor in data[0][valve].keys():
                 for param in ['primary', 'secondary']:
                     cname = f'{valve}.{sensor}.{param}'
-                    data_df[cname].explode(cname).to_csv(
-                        os.path.join(output_dir, f'{cname}.csv'))
+                    df_tmp = data_df[cname].explode(cname)
+                    fn = os.path.join(output_dir, param, f'{valve}-{sensor}')
+                    # write to csv file
+                    df_tmp.to_csv(fn+'.csv')
+                    # produce plots
+                    fig = px.scatter(df_tmp)
+                    fig.update_traces(mode='lines+markers')
+                    plotly.offline.plot(fig,
+                                        include_plotlyjs='cdn',
+                                        filename=fn+'.html')
 
-        # all sensor data (primary and secondary)
+        # write all sensors to csv file
         for valve in data[0].keys():
             for param in ['primary', 'secondary']:
                 valve_df = data_df.filter(regex=f'{valve}.*{param}').copy()
@@ -257,11 +271,17 @@ class FormHandler(tornado.web.RequestHandler):
                         valve_df.loc[idx, col] = valve_df[col][idx][0:min_rows]
                 valve_df = valve_df.explode(
                     list(valve_df.columns), ignore_index=True)
-                valve_df.to_csv(os.path.join(
-                    output_dir, f'{valve}.{param}.csv'))
+                fn = os.path.join(output_dir, param, f'{valve}')
+                # write to csv file
+                valve_df.to_csv(fn+'.csv')
+                # produce plots
+                fig = px.scatter(valve_df)
+                fig.update_traces(mode='lines+markers')
+                plotly.offline.plot(fig,
+                                    include_plotlyjs='cdn',
+                                    filename=fn+'.html')
 
         # update experiment directory index pages
-        import indexer
         parser = indexer.add_args()
         args = parser.parse_args(['experiments', '--recursive'])
         indexer.process_dir(args.top_dir, args)
@@ -315,16 +335,16 @@ def setup_ws(web_ip, web_port):
         js.write(data)
 
 
-def create_output_dir():
+def create_output_dir(subdirs=None):
     '''create data output directory'''
     # base output directory
     base_dir = 'experiments'
 
     # date and time as subdirectory
     timestr = time.strftime("%Y-%m-%d %Hh%Mm%Ss")
+    output_dir = os.path.abspath(os.path.join(SCRIPT_DIR, base_dir, timestr))
 
     # create output directory if not exists
-    output_dir = os.path.abspath(os.path.join(SCRIPT_DIR, base_dir, timestr))
     if not os.path.exists(output_dir):
         try:
             os.makedirs(output_dir)
@@ -332,6 +352,14 @@ def create_output_dir():
             print("Unable to create output directory!")
             # shutdown()
             sys.exit(1)
+
+    if subdirs is not None:
+        for subdir in subdirs:
+            try:
+                os.makedirs(os.path.join(output_dir, subdir))
+            except Exception as _:
+                print("Unable to create output directory!")
+                sys.exit(1)
 
     return output_dir
 
@@ -371,8 +399,8 @@ if __name__ == '__main__':
     ]
     settings = dict(
         template_path=os.path.join(os.path.dirname(__file__), "templates"),
+        debug=False,
         autoreload=True,
-        debug=True
     )
     app = tornado.web.Application(
         handlers=handlers,

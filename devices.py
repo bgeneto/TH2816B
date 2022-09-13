@@ -22,6 +22,7 @@ import os
 import sys
 import time
 import traceback
+from datetime import datetime
 from enum import Enum
 from typing import Dict
 
@@ -36,13 +37,15 @@ __maintainer__ = "Bernhard Enders"
 __email__ = "b g e n e t o @ g m a i l d o t c o m"
 __copyright__ = "Copyright 2022, Bernhard Enders"
 __license__ = "GPL"
-__version__ = "0.1.8"
-__date__ = "20220912"
+__version__ = "0.1.10"
+__date__ = "20220913"
 __status__ = "Development"
 
 # global constants
 ON = 1
 OFF = 2
+
+cprint = ColorPrint(__name__ + '.log')
 
 
 class Board(Enum):
@@ -61,9 +64,7 @@ class ArduinoConnection:
     '''
 
     def __init__(self, name, model, id=1):
-        ColorPrint.print_info("---------------------------------------------")
-        ColorPrint.print_info(f" Searching '{name}' device...               ")
-        ColorPrint.print_info("---------------------------------------------")
+        cprint.info(f" Searching '{name}' device...               ")
         self.name = name
         self.model = model
         self.id = id
@@ -76,9 +77,7 @@ class ArduinoConnection:
         wait = 3  # seconds
         ser = pymata4.Pymata4(arduino_instance_id=self.id,
                               arduino_wait=wait)
-        ColorPrint.print_pass("---------------------------------------------")
-        ColorPrint.print_pass(f" Device '{self.name}' connected successfully")
-        ColorPrint.print_pass("---------------------------------------------")
+        cprint.success(f" Device '{self.name}' connected successfully")
 
         return ser
 
@@ -91,11 +90,11 @@ class ArduinoConnection:
                 self.ser = self.connect()
                 break
             except Exception as _:
-                ColorPrint.print_warn(
+                cprint.warn(
                     f"Device '{self.name}' not found or serial port in use!")
                 time.sleep(1)  # wait before next connection attempt
         else:
-            ColorPrint.print_fail(
+            cprint.fail(
                 f"Unable to connect to device named '{self.name}'. Exiting...")
             # shutdown()
             sys.exit(1)
@@ -189,11 +188,11 @@ class ArduinoConnection:
             time.sleep(0.1)
             if idx in pins_pos:
                 for pin in pins:
-                    ColorPrint.print_info(f"Turning ON pin {pin}")
+                    cprint.info(f"Turning ON pin {pin}")
                     self.ser.digital_write(pin, ON)
             else:
                 for pin in pins:
-                    ColorPrint.print_info(f"Turning OFF pin {pin}")
+                    #cprint.info(f"Turning OFF pin {pin}")
                     self.ser.digital_write(pin, OFF)
         # global wait (if requested)
         time.sleep(wait)
@@ -209,9 +208,6 @@ class ArduinoConnection:
         sensors_dict = {sensor: copy.deepcopy(
             params) for sensor in copy.deepcopy(sensors_lst)}
 
-        # received data lists
-        #str_lst = ['']*len(sensors)
-
         while loop > 0:
             loop -= 1
             for spos in sensors_pos:
@@ -219,29 +215,19 @@ class ArduinoConnection:
                 self.switch_onoff(self.sensors_pins, [spos])
                 # wait for the sensor to settle before taking a reading
                 time.sleep(0.5)
-                ColorPrint.print_bold('Start measuring...')
+                cprint.normal('Measuring...')
                 # now we empty the input buffer list
-                lcr_meter.transport.serial.flush()
+                # lcr_meter.transport.serial.flush()
                 lcr_meter.protocol.received_lines = []
                 # read duration
                 time.sleep(rtime)
                 lines = copy.deepcopy(lcr_meter.protocol.received_lines)
-                ColorPrint.print_bold('Stop measuring...')
                 for line in lines:
                     pri, sec = line.split(',')
                     sensors_dict[f'S{spos}']['primary'].append(
                         float(pri))
                     sensors_dict[f'S{spos}']['secondary'].append(
                         float(sec))
-                # rx_str = '\n'.join(
-                #    lcr_meter.protocol.received_lines) + '\n'
-                #str_lst[sensor] += rx_str
-
-        # format the data into a list of dataframes
-        #lst_df = []
-        # for pos, data in enumerate(str_lst):
-        #    lst_df.insert(pos, pd.read_csv(
-        #        StringIO(data), sep=",", header=None, names=cols))
 
         return sensors_dict
 
@@ -253,9 +239,7 @@ class SerialConnection:
 
         self.name = 'LCR'
 
-        ColorPrint.print_info("---------------------------------------------")
-        ColorPrint.print_info(f" Searching '{self.name}' device...        ")
-        ColorPrint.print_info("---------------------------------------------")
+        cprint.info(f" Searching '{self.name}' device...        ")
 
         # generic device parameters
         self.ser = None
@@ -293,7 +277,7 @@ class SerialConnection:
 
         # wait device to became ready
         if wait is not None:
-            ColorPrint.print_warn(
+            cprint.warn(
                 f"Waiting serial port ({self.name}) to became ready...")
             if isinstance(wait, int) and wait > 0:
                 time.sleep(wait)
@@ -304,13 +288,11 @@ class SerialConnection:
                     if str(wait.lower()) in self.protocol.received_lines:
                         break
                 else:
-                    ColorPrint.print_fail(
+                    cprint.fail(
                         f"***ERROR: Serial port ({self.name}) not ready, timed out!")
                     raise TimeoutError
 
-        ColorPrint.print_pass("---------------------------------------------")
-        ColorPrint.print_pass(f" Device '{self.name}' connected successfully")
-        ColorPrint.print_pass("---------------------------------------------")
+        cprint.success(f" Device '{self.name}' connected successfully")
 
     def connection_attempt(self):
         '''attempts to connect to the serial port'''
@@ -326,11 +308,11 @@ class SerialConnection:
                 self.protocol.write_line('TRIG:SOUR INT')
                 break
             except Exception as _:
-                ColorPrint.print_warn(
+                cprint.warn(
                     f"Device '{self.name}' not found or serial port in use!")
                 time.sleep(1)  # wait before next connection attempt
         else:
-            ColorPrint.print_fail(
+            cprint.fail(
                 f"Unable to connect to device named '{self.name}'. Exiting...")
             # shutdown()
             sys.exit(1)
@@ -364,7 +346,7 @@ class SerialReaderProtocolLine(LineReader):
     def connection_lost(self, exc):
         if exc:
             traceback.print_exc(exc)
-        ColorPrint.print_info('Serial port closed')
+        cprint.warn('Serial port closed')
 
 
 def shutdown(lcr_meter, arduinos):
@@ -379,15 +361,21 @@ def shutdown(lcr_meter, arduinos):
             arduino.switch_all_off()
             time.sleep(0.1)
             arduino.ser.shutdown()
-            ColorPrint.print_info(f'Arduino {arduino.name} shutdown')
+            cprint.warn(f'Arduino {arduino.name} shutdown')
+        now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        cprint.bold(f'..:: Experiment ended at {now} ::..')
     except Exception as exc:
         traceback.print_exc(exc)
+
 
 def run_experiment(lcr_meter, arduinos, vloop, sloop, stime):
     '''run the experiment'''
 
     # wait before starting a measurement
     time.sleep(1)
+
+    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    cprint.bold(f'..:: Experiment started at {now}  ::..')
 
     # find out number of arduinos configured
     if len(arduinos) == 1:
@@ -406,7 +394,7 @@ def run_experiment(lcr_meter, arduinos, vloop, sloop, stime):
         len(elem) == 0 for elem in arduino_sensors.sensors_pins)
     empty_valves = all(len(elem) == 0 for elem in arduino_valves.valves_pins)
     if empty_sensors or empty_valves:
-        ColorPrint.print_fail('Please configure arduino pins first!')
+        cprint.fail('Please configure arduino pins first!')
         sys.exit(1)
 
     # store retrieved data in a list of dictionaries
@@ -415,7 +403,8 @@ def run_experiment(lcr_meter, arduinos, vloop, sloop, stime):
 
     # main experiment loop
     for _ in range(vloop):
-        valves_dict = {key: copy.deepcopy({}) for key in copy.deepcopy(valves_lst)}
+        valves_dict = {key: copy.deepcopy({})
+                       for key in copy.deepcopy(valves_lst)}
         for vpos in valves_pos:
             arduino_valves.switch_onoff(arduino_valves.valves_pins, [vpos])
             valves_dict[f'V{vpos}'] = arduino_sensors.sensors_loop(lcr_meter,
@@ -426,6 +415,7 @@ def run_experiment(lcr_meter, arduinos, vloop, sloop, stime):
         data.append(valves_dict)
 
     return data
+
 
 def arduinos_connect(cfg) -> Dict[str, ArduinoConnection]:
     '''connect to arduinos'''
