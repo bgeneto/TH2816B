@@ -11,9 +11,12 @@ import csv
 import json
 import multiprocessing
 import os
+import subprocess
 import sys
 from datetime import date
 
+import numpy as np
+import pandas as pd
 import serial
 import tornado.concurrent
 import tornado.gen
@@ -206,53 +209,35 @@ class FormHandler(tornado.web.RequestHandler):
         with open(os.path.join(output_dir, 'results.json'), 'w', encoding='ISO-8859-1') as outfile:
             json.dump(data, outfile, indent=2, ensure_ascii=True)
 
-        # write csv file for each sensor
-        vkeys = [f'V{idx}' for idx in range(len(data[0]))]
-        skeys = [f'S{idx}' for idx in range(len(data[0]['V0']))]
-        primary = {vkey: {} for vkey in copy.deepcopy(vkeys)}
-        secondary = {vkey: {} for vkey in copy.deepcopy(vkeys)}
+        data_df = pd.json_normalize(data)
+        for valve in data[0].keys():
+            for sensor in data[0][valve].keys():
+                for param in ['primary', 'secondary']:
+                    cname = f'{valve}.{sensor}.{param}'
+                    data_df[cname].explode(cname).to_csv(
+                        os.path.join(output_dir, f'{cname}.csv'))
 
-        for idx in range(len(data)):
-            for valve in data[idx].keys():
-                for sensor in data[idx][valve].keys():
-                    if sensor in primary[valve]:
-                        primary[valve][sensor] += data[idx][valve][sensor]['primary']
-                        secondary[valve][sensor] += data[idx][valve][sensor]['secondary']
-                    else:
-                        primary[valve][sensor] = data[idx][valve][sensor]['primary']
-                        secondary[valve][sensor] = data[idx][valve][sensor]['secondary']
-
-        for valve in primary.keys():
-            with open(os.path.join(output_dir, f'{valve}-sensors-primary.csv'), 'w', encoding='UTF-8') as valves_file:
-                writer = csv.DictWriter(valves_file, fieldnames=skeys)
-                writer.writerows(primary[valve])
-                for sensor in primary[valve].keys():
-                    with open(os.path.join(output_dir, f'{valve}-{sensor}-primary.csv'), 'w', encoding='UTF-8') as sensors_file:
-                        writer = csv.writer(sensors_file)
-                        writer.writerows(primary[valve][sensor])
-
-        # convert to dataframe
-        #data_df = pd.json_normalize(data)
-
-        # save data to several csv files
-        # for valve in valves:
-        # for param in ['primary', 'secondary']:
-        # print(data[valve][0][param])
-        # write two files with all sensors data
-        # sensors_df = pd.concat(
-        #    [x[param] for x in data[valve][:]], ignore_index=True, axis=1)
-        # fname = os.path.join(
-        #    output_dir, f'v{valve}_{param}_all_sensors.csv')
-        #sensors_df.to_csv(fname, index=False)
-        #    for sensor in sensors:
-        #        # write one
-        #        fname = os.path.join(output_dir, f'v{valve}s{sensor}.csv')
-        #        data[valve][sensor].to_csv(fname, index=False)
+        # all sensor data (primary and secondary)
+        for valve in data[0].keys():
+            for param in ['primary', 'secondary']:
+                valve_df = data_df.filter(regex=f'{valve}.*{param}').copy()
+                min_rows = sys.maxsize
+                for col in valve_df.columns:
+                    rows = valve_df[col].map(len).min()
+                    min_rows = rows if rows < min_rows else min_rows
+                for idx in valve_df.index:
+                    for col in valve_df.columns:
+                        valve_df.loc[idx, col] = valve_df[col][idx][0:min_rows]
+                valve_df = valve_df.explode(
+                    list(valve_df.columns), ignore_index=True)
+                valve_df.to_csv(os.path.join(
+                    output_dir, f'{valve}.{param}.csv'))
 
         # update experiment directory index pages
-
         try:
-            os.system(f"{SCRIPT_DIR}/indexer.py -r {SCRIPT_DIR}/experiments/")
+            _ = subprocess.Popen([sys.executable, f"{SCRIPT_DIR}/indexer.py -r {SCRIPT_DIR}/experiments"],
+                                 stdout=subprocess.PIPE,
+                                 stderr=subprocess.STDOUT)
         except Exception as exp:
             ColorPrint.print_fail(str(exp))
 

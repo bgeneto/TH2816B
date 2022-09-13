@@ -219,14 +219,14 @@ class ArduinoConnection:
                 self.switch_onoff(self.sensors_pins, [spos])
                 # wait for the sensor to settle before taking a reading
                 time.sleep(0.5)
+                ColorPrint.print_bold('Start measuring...')
                 # now we empty the input buffer list
                 lcr_meter.transport.serial.flush()
                 lcr_meter.protocol.received_lines = []
-                ColorPrint.print_bold('Start measuring...')
                 # read duration
                 time.sleep(rtime)
+                lines = copy.deepcopy(lcr_meter.protocol.received_lines)
                 ColorPrint.print_bold('Stop measuring...')
-                lines = lcr_meter.protocol.received_lines
                 for line in lines:
                     pri, sec = line.split(',')
                     sensors_dict[f'S{spos}']['primary'].append(
