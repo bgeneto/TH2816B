@@ -13,7 +13,9 @@
                 if (data.contents === "undefined" || data.contents == false) {
                     return;
                 }
-                $('#devices_log').html(data.contents);
+                elem = $('#devices_log');
+                elem.html(data.contents);
+                elem.scrollTop(elem[0].scrollHeight);
             },
             /* call poll again only if server responded last call
                avoids a bunch of queued Ajax requests in case of

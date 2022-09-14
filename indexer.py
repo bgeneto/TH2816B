@@ -240,9 +240,9 @@ def process_dir(top_dir, opts):
     </defs>
     </svg>
 <header>
-    <h1>"""
+    <h3>"""
                      f'{path_top_dir.name} <span id="desc_text"></span>'
-                     """</h1>
+                     """</h3>
                  </header>
                  <main>
                  <div class="listing">

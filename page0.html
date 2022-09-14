@@ -1,276 +1,133 @@
-<!DOCTYPE html>
-<html lang="en">
+{% extends "templates/main.html" %}
+{% block body %}
+<!-- ========== main body start ========== -->
+<section class="tab-components">
+    <div class="container-fluid">
 
-<head>
-    <meta name="description" content="" />
-    <meta charset="UTF-8" />
-    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="shortcut icon" href="static/images/favicon.svg" type="image/x-icon" />
-    <title data-i18n="head.title"></title>
+        <div class="title-wrapper pt-30">
+            <div class="row align-items-center">
+                <div class="col-md-12">
+                    <div class="title mb-30">
+                        <h2 data-i18n="index.title"></h2>
+                        <p class="text-sm" data-i18n="[html]index.text"></p>
+                    </div>
 
-    <!-- ========== All CSS files ========= -->
-    <link rel="stylesheet" href="static/css/bootstrap.min.css" />
-    <link rel="stylesheet" href="static/css/lineicons.css" />
-    <link rel="stylesheet" href="static/css/materialdesignicons.min.css" />
-    <link rel="stylesheet" href="static/css/fullcalendar.css" />
-    <link rel="stylesheet" href="static/css/main.css" />
-    <link rel="stylesheet" href="static/css/custom.css" />
-</head>
-
-<body>
-
-    <!-- ======== sidebar-nav start =========== -->
-    <aside class="sidebar-nav-wrapper">
-        <div class="navbar-logo">
-            <a href="/page?id=0">
-                <img src="static/images/logo/logo.svg" alt="logo" width="120" />
-            </a>
+                </div>
+            </div>
+            <!-- end row -->
         </div>
-        <nav class="sidebar-nav">
-            <ul>
-                <li class="nav-item nav-item-has-children">
-                    <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_1"
-                        aria-controls="ddmenu_1" aria-expanded="false" aria-label="Toggle navigation">
-                        <span class="icon">
-                            <svg width="22" height="22" viewBox="0 0 22 22" fill="none"
-                                xmlns="http://www.w3.org/2000/svg">
-                                <path
-                                    d="M12.8334 1.83325H5.50008C5.01385 1.83325 4.54754 2.02641 4.20372 2.37022C3.8599 2.71404 3.66675 3.18036 3.66675 3.66659V18.3333C3.66675 18.8195 3.8599 19.2858 4.20372 19.6296C4.54754 19.9734 5.01385 20.1666 5.50008 20.1666H16.5001C16.9863 20.1666 17.4526 19.9734 17.7964 19.6296C18.1403 19.2858 18.3334 18.8195 18.3334 18.3333V7.33325L12.8334 1.83325ZM16.5001 18.3333H5.50008V3.66659H11.9167V8.24992H16.5001V18.3333Z" />
-                            </svg>
-                        </span>
-                        <span class="text" data-i18n="menu.experiment"></span>
-                    </a>
-                    <ul id="ddmenu_1" class="collapse show dropdown-nav">
-                        <li>
-                            <a href="/page?id=0" class="active" data-i18n="menu.index"></a>
-                        </li>
-                        <li>
-                            <a href="/experiments/index.html" data-i18n="menu.page4"></a>
-                        </li>
-                        <li>
-                            <a href="/page?id=3" data-i18n="menu.page3"></a>
-                        </li>
-                    </ul>
-                </li>
-                <li class="nav-item nav-item-has-children">
-                    <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_2"
-                        aria-controls="ddmenu_2" aria-expanded="true" aria-label="Toggle navigation">
-                        <span class="icon">
-                            <svg width="22" height="22" viewBox="0 0 22 22">
-                                <path
-                                    d="M17.4167 4.58333V6.41667H13.75V4.58333H17.4167ZM8.25 4.58333V10.0833H4.58333V4.58333H8.25ZM17.4167 11.9167V17.4167H13.75V11.9167H17.4167ZM8.25 15.5833V17.4167H4.58333V15.5833H8.25ZM19.25 2.75H11.9167V8.25H19.25V2.75ZM10.0833 2.75H2.75V11.9167H10.0833V2.75ZM19.25 10.0833H11.9167V19.25H19.25V10.0833ZM10.0833 13.75H2.75V19.25H10.0833V13.75Z" />
-                            </svg>
-                        </span>
-                        <span class="text" data-i18n="menu.config"></span>
-                    </a>
-                    <ul id="ddmenu_2" class="collapse dropdown-nav">
-                        <li>
-                            <a href="/page?id=1" data-i18n="menu.page1"></a>
-                        </li>
-                        <li>
-                            <a href="/page?id=2" data-i18n="menu.page2"></a>
-                        </li>
-                    </ul>
-                </li>
-            </ul>
-        </nav>
-        <div class="promo-box">
-            <h3 data-i18n="promo.title"></h3>
-            <p data-i18n="promo.text"></p>
-        </div>
-    </aside>
-    <div class="overlay"></div>
-    <!-- ======== sidebar-nav end =========== -->
 
-    <main class="main-wrapper">
-
-        <!-- ========== top header start ========== -->
-        <header class="header">
-            <div class="container-fluid">
+        <div class="form-elements-wrapper">
+            <form id="sent" action="/form" method="post">
+                <input type="hidden" name="page_id" id="page_id" value="0">
                 <div class="row">
-                    <div class="col-lg-2 col-md-2 col-3">
-                        <div class="header-left d-flex align-items-center">
-                            <div class="menu-toggle-btn mr-20">
-                                <button id="menu-toggle" class="main-btn primary-btn btn-hover">
-                                    <i class="lni lni-chevron-left me-2"></i>Menu
-                                </button>
+                    <div class="col-md-12">
+                        <div class="card-style mb-30">
+                            <div class="input-style-1">
+                                <label class="uppercase" data-i18n="index.exp_name"></label>
+                                <input type="text" name="exp_name" id="exp_name"
+                                    data-i18n="[placeholder]index.exp_desc" />
+                            </div>
+                            <div class="input-style-1">
+                                <label class="uppercase" data-i18n="index.username"></label>
+                                <input type="text" name="username" id="username"
+                                    data-i18n="[placeholder]index.username" />
+                            </div>
+                            <div class="mb-3">
+                                <div class="button-group d-flex justify-content-left flex-wrap">
+                                    <button id="exp_start" type="submit" class="btn btn-primary"
+                                        data-i18n="index.button"></button>
+                                </div>
+                            </div>
+                        </div><!-- end card -->
+                    </div><!-- end col -->
+                </div><!-- end row -->
+            </form>
+        </div>
+
+        <!-- ========== form-elements-wrapper start ========== -->
+        <div class="form-elements-wrapper">
+            <!-- row -->
+            <div class="row">
+                <div class="col-md-12">
+                    <div class="card-style mb-30">
+                        <div class="input-style-1">
+                            <label class="uppercase" data-i18n="index.output"></label>
+                            <div class="log_output" id="devices_log" name="devices_log" data-i18n="index.log"></div>
+                        </div>
+                        <div class="mb-3">
+                            <div class="button-group d-flex justify-content-left flex-wrap">
+                                <button id="log_clear" type="button" class="btn btn-warning"
+                                    data-i18n="index.clr_button"></button>
                             </div>
                         </div>
-                    </div>
-                    <div class="col-lg-8 col-md-8 col-7">
-                        <div class="header-left text-center">
-                            <h1 data-i18n="intro.title"></h1>
-                            <p data-i18n="intro.subtitle"></p>
-                        </div>
-                    </div>
-                </div>
+                    </div><!-- end card -->
+                </div><!-- end col -->
             </div>
-        </header>
-        <!-- ========== top header end ========== -->
+            <!-- end row -->
+        </div>
+    </div>
+    <!-- end container -->
+</section>
+<!-- ========== main body end ========== -->
+{% end %}
 
-        <!-- ========== tab components start ========== -->
-        <section class="tab-components">
-            <div class="container-fluid">
-
-                <div class="title-wrapper pt-30">
-                    <div class="row align-items-center">
-                        <div class="col-md-12">
-                            <div class="title mb-30">
-                                <h2 data-i18n="index.title"></h2>
-                                <p class="text-sm" data-i18n="[html]index.text"></p>
-                            </div>
-
-                        </div>
-                    </div>
-                    <!-- end row -->
-                </div>
-
-                <div class="form-elements-wrapper">
-                    <form id="sent" action="/form" method="post">
-                        <input type="hidden" name="page_id" id="page_id" value="0">
-                        <div class="row">
-                            <div class="col-md-12">
-                                <div class="card-style mb-30">
-                                    <div class="input-style-1">
-                                        <label class="uppercase" data-i18n="index.exp_name"></label>
-                                        <input type="text" name="exp_name" id="exp_name"
-                                            data-i18n="[placeholder]index.exp_desc" />
-                                    </div>
-                                    <div class="mb-3">
-                                        <div class="button-group d-flex justify-content-left flex-wrap">
-                                            <button id="exp_start" type="submit" class="btn btn-primary"
-                                                data-i18n="index.button"></button>
-                                        </div>
-                                    </div>
-                                </div><!-- end card -->
-                            </div><!-- end col -->
-                        </div><!-- end row -->
-                    </form>
-                </div>
-
-                <!-- ========== form-elements-wrapper start ========== -->
-                <div class="form-elements-wrapper">
-                    <!-- row -->
-                    <div class="row">
-                        <div class="col-md-12">
-                            <div class="card-style mb-30">
-                                <div class="input-style-1">
-                                    <label class="uppercase" data-i18n="index.output"></label>
-                                    <div class="log_output" id="devices_log" name="devices_log"></div>
-                                </div>
-                                <div class="mb-3">
-                                    <div class="button-group d-flex justify-content-left flex-wrap">
-                                        <button id="log_clear" type="button" class="btn btn-warning"
-                                            data-i18n="index.clr_button"></button>
-                                    </div>
-                                </div>
-                            </div><!-- end card -->
-                        </div><!-- end col -->
-                    </div>
-                    <!-- end row -->
-                </div>
+{% block modals %}
+<!-- modals -->
+<div id="modalContainer"></div>
+<div class="modal fade" id="cmdModal" tabindex="-1" aria-labelledby="cmdModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="cmdModalLabel">INFO</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <!-- end container -->
-        </section>
-        <!-- ========== tab components end ========== -->
-
-        <!-- ========== footer start =========== -->
-
-        <footer class="footer">
-            <div class="container-fluid">
-                <div class="row">
-                    <div class="col-md-6 order-last order-md-first">
-                        <div class="copyright text-center text-md-start">
-                            <select name="language" id="languageSwitcher">
-                            </select>
-                        </div>
-                    </div>
-                    <!-- end col-->
-                    <div class="col-md-6">
-                        <div class="
-                terms
-                d-flex
-                justify-content-center justify-content-md-end
-              ">
-                            <p class="text-sm">
-                                &copy; 2022-{{__year__}} bgeneto (v{{__version__}})
-                            </p>
-                        </div>
-                    </div>
-                </div>
-                <!-- end row -->
+            <div class="modal-body" data-i18n="command.sent">
             </div>
-            <!-- end container -->
-        </footer>
-        <!-- ========== footer end =========== -->
-
-    </main>
-    <!-- modals -->
-    <div id="modalContainer"></div>
-    <div class="modal fade" id="cmdModal" tabindex="-1" aria-labelledby="cmdModalLabel" aria-hidden="true">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="cmdModalLabel">INFO</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body" data-i18n="command.sent">
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
             </div>
         </div>
     </div>
-    <div class="modal fade" id="errModal" tabindex="-1" aria-labelledby="errModalLabel" aria-hidden="true">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="errModalLabel">ERROR</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body" data-i18n="command.error">
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-danger" data-bs-dismiss="modal">Close</button>
-                </div>
+</div>
+<div class="modal fade" id="errModal" tabindex="-1" aria-labelledby="errModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="errModalLabel">ERROR</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" data-i18n="command.error">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-danger" data-bs-dismiss="modal">Close</button>
             </div>
         </div>
     </div>
-    <div class="modal fade" id="okModal" tabindex="-1" aria-labelledby="okModalLabel" aria-hidden="true">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="okModalLabel" data-i18n="page1.ok_msg_title"></h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body" data-i18n="index.ok_msg">
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-success" data-bs-dismiss="modal">Close</button>
-                </div>
+</div>
+<div class="modal fade" id="okModal" tabindex="-1" aria-labelledby="okModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="okModalLabel" data-i18n="page1.ok_msg_title"></h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" data-i18n="index.ok_msg">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-success" data-bs-dismiss="modal">Close</button>
             </div>
         </div>
     </div>
-    <!-- end modals -->
-    <!-- ========= All Javascript files ======== -->
-    <script src="static/js/bootstrap.bundle.min.js"></script>
-    <script src="static/js/fullcalendar.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/i18next/21.6.14/i18next.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-i18next/1.2.1/jquery-i18next.min.js"></script>
-    <script
-        src="https://cdn.jsdelivr.net/npm/i18next-browser-languagedetector@6.1.3/i18nextBrowserLanguageDetector.min.js"></script>
-    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
-    <script src="static/js/websocket.js"></script>
-    <script src="static/js/i18n.js"></script>
-    <script src="static/js/main.js"></script>
-    <script src="static/js/logger.js"></script>
-    <script>
-        $('#log_clear').click(function () {
-            $('#devices_log').html('');
-        });
-    </script>
-</body>
+</div>
+<!-- end modals -->
+{% end %}
 
-</html>
+{% block scripts %}
+<script src="static/js/logger.js"></script>
+<script>
+    $('#log_clear').click(function () {
+        $('#devices_log').html('');
+    });
+</script>
+{% end %}

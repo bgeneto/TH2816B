@@ -17,8 +17,6 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import copy
-import json
-import os
 import sys
 import time
 import traceback
@@ -37,7 +35,7 @@ __maintainer__ = "Bernhard Enders"
 __email__ = "b g e n e t o @ g m a i l d o t c o m"
 __copyright__ = "Copyright 2022, Bernhard Enders"
 __license__ = "GPL"
-__version__ = "0.1.10"
+__version__ = "0.1.11"
 __date__ = "20220913"
 __status__ = "Development"
 

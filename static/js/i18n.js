@@ -71,6 +71,8 @@ $(function () {
               clr_button: 'Clear',
               output: 'Data output',
               ok_msg: 'Experiment started successfully!',
+              log: 'Waiting for an experiment...',
+              username: 'Username',
             },
             page1: {
               title: 'Experiment Configuration',
@@ -119,6 +121,9 @@ $(function () {
             },
             page3: {
               title: 'Use this page to send commands to and receive data from the TH2816B LCR Meter',
+            },
+            page4: {
+              title: 'Finished Experiments',
             },
             configure: {
               button: 'Configure'
@@ -173,6 +178,8 @@ $(function () {
               clr_button: 'Limpar',
               output: 'Saída de dados',
               ok_msg: 'Experimento iniciado com sucesso!',
+              log: 'Aguardando novo experimento...',
+              username: 'Nome do usuário',
             },
             page1: {
               title: 'Configuração do Experimento',
@@ -220,6 +227,9 @@ $(function () {
             },
             page3: {
               title: 'Use esta página para enviar comandos e visualizar os dados capturados pelo medidor LCR TH2816B',
+            },
+            page4: {
+              title: 'Experimentos Concluídos',
             },
             configure: {
               button: 'Configure'

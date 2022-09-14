@@ -7,18 +7,16 @@ History:  v0.0.1  Initial release
           v0.0.2  Configure options via config (ini) file
 """
 
-import csv
 from genericpath import isfile
 import json
 import multiprocessing
 import os
-import subprocess
 import sys
 from datetime import date
 
-import numpy as np
 import pandas as pd
-import serial
+import plotly
+import plotly.express as px
 import tornado.concurrent
 import tornado.gen
 import tornado.httpserver
@@ -26,6 +24,7 @@ import tornado.ioloop
 import tornado.web
 import tornado.websocket
 
+import indexer
 import mycfg
 from devices import *
 
@@ -35,7 +34,7 @@ __email__ = "b g e n e t o @ g m a i l d o t c o m"
 __copyright__ = "Copyright 2022, Bernhard Enders"
 __license__ = "GPL"
 __status__ = "Development"
-__version__ = "0.1.4"
+__version__ = "0.1.6"
 __date__ = "20220913"
 __year__ = date.today().year
 
@@ -65,6 +64,7 @@ class PageHandler(tornado.web.RequestHandler):
         params = {}
         params['__version__'] = __version__
         params['__year__'] = __year__
+        params['page_id'] = int(id)
         params['valves_loop'] = int(cfg.get_setting(
             "experiment", "valves_loop"))
         params['sensors_loop'] = int(cfg.get_setting(
@@ -137,7 +137,6 @@ class FormHandler(tornado.web.RequestHandler):
             elif page_id == 2:
                 self.arduino_config()
         except Exception as exp:
-            print(str(exp))
             self.redirect(f'page?id={page_id}&status=2')
             return
 
@@ -193,10 +192,6 @@ class FormHandler(tornado.web.RequestHandler):
     @tornado.concurrent.run_on_executor(executor='_thread_pool')
     def start_experiment(self):
         '''start a new experiment'''
-        import indexer
-        import plotly
-        import plotly.express as px
-
         # ensures that this variable is accessible in the other thread
         cfg = mycfg.MyConfig(CFGFN)
 
@@ -222,18 +217,28 @@ class FormHandler(tornado.web.RequestHandler):
         finally:
             shutdown(lcr, arduinos)
 
-        # create output directory if not exists
-        output_dir = create_output_dir(['primary', 'secondary'])
+        # subdirectories to create
+        topdir = None
+        subdirs = ['primary', 'secondary']
 
         # get experiment name from form and write to file
+        exp_name = str(self.get_body_arguments('exp_name')[0])
+        username = str(self.get_body_arguments('username')[0])
+        if len(exp_name) < 1:
+            exp_name = 'No desc'
+        if len(username) < 1:
+            username = ''
+        else:
+            topdir = username
+
+        # create output directory and subdirectories
+        output_dir = create_output_dir(topdir, subdirs)
         try:
-            exp_name = str(self.get_body_arguments('exp_name')[0])
-            if len(exp_name) < 1:
-                exp_name = 'No name'
             with open(os.path.join(output_dir, 'desc.txt'), 'w', encoding='UTF-8') as fp:
                 fp.write(exp_name)
-        except:
-            pass
+        except Exception as exp:
+            print("ERROR: Unable to write experiment description to file")
+            os._exit(os.EX_CONFIG)
 
         # save all collected data to a single json file
         with open(os.path.join(output_dir, 'results.json'), 'w', encoding='ISO-8859-1') as outfile:
@@ -335,10 +340,11 @@ def setup_ws(web_ip, web_port):
         js.write(data)
 
 
-def create_output_dir(subdirs=None):
+def create_output_dir(topdir=None, subdirs=None):
     '''create data output directory'''
     # base output directory
-    base_dir = 'experiments'
+    base_dir = 'experiments' if topdir is None else os.path.join(
+        'experiments', topdir)
 
     # date and time as subdirectory
     timestr = time.strftime("%Y-%m-%d %Hh%Mm%Ss")
@@ -349,17 +355,17 @@ def create_output_dir(subdirs=None):
         try:
             os.makedirs(output_dir)
         except Exception as _:
-            print("Unable to create output directory!")
+            print("ERROR: Unable to create output directory!")
             # shutdown()
-            sys.exit(1)
+            os._exit(os.EX_CONFIG)
 
     if subdirs is not None:
         for subdir in subdirs:
             try:
                 os.makedirs(os.path.join(output_dir, subdir))
             except Exception as _:
-                print("Unable to create output directory!")
-                sys.exit(1)
+                print("ERROR: Unable to create output subdirectory!")
+                os._exit(os.EX_CONFIG)
 
     return output_dir
 
@@ -388,8 +394,8 @@ if __name__ == '__main__':
     # tornado setup
     handlers = [
         (r"/", IndexHandler),
-        (r"/page", PageHandler),
         (r"/ws", WebSocketHandler),
+        (r"/page", PageHandler),
         (r"/form", FormHandler),
         (r"/ajax", AjaxHandler),
         (r"/static/(.*)", tornado.web.StaticFileHandler,
@@ -423,7 +429,6 @@ if __name__ == '__main__':
         scheduler.start()
         main_loop.start()
     except Exception as exp:
-        print(str(exp))
         pass
     finally:
         input_queue.close()
