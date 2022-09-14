@@ -16,50 +16,34 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import os
+import copy
 import sys
 import time
 import traceback
+from datetime import datetime
 from enum import Enum
-from io import StringIO
+from typing import Dict
 
-import pandas as pd
 import serial
 from pymata4 import pymata4
 from serial.threaded import LineReader, ReaderThread
+
+from colorprint import ColorPrint
 
 __author__ = "Bernhard Enders"
 __maintainer__ = "Bernhard Enders"
 __email__ = "b g e n e t o @ g m a i l d o t c o m"
 __copyright__ = "Copyright 2022, Bernhard Enders"
 __license__ = "GPL"
-__version__ = "1.1.0"
-__date__ = "20220825"
+__version__ = "0.1.11"
+__date__ = "20220913"
 __status__ = "Development"
 
+# global constants
+ON = 1
+OFF = 2
 
-class ColorPrint:
-    '''print terminal messages in colors '''
-    @staticmethod
-    def print_fail(message, end='\n'):
-        sys.stderr.write('\x1b[1;31m' + 'ERROR: ' + message + '\x1b[0m' + end)
-
-    @staticmethod
-    def print_pass(message, end='\n'):
-        sys.stdout.write('\x1b[1;32m' + message + '\x1b[0m' + end)
-
-    @staticmethod
-    def print_warn(message, end='\n'):
-        sys.stderr.write('\x1b[1;33m' + 'WARNING: ' +
-                         message + '\x1b[0m' + end)
-
-    @staticmethod
-    def print_info(message, end='\n'):
-        sys.stdout.write('\x1b[1;34m' + message + '\x1b[0m' + end)
-
-    @staticmethod
-    def print_bold(message, end='\n'):
-        sys.stdout.write('\x1b[1;37m' + message + '\x1b[0m' + end)
+cprint = ColorPrint(__name__ + '.log')
 
 
 class Board(Enum):
@@ -78,13 +62,12 @@ class ArduinoConnection:
     '''
 
     def __init__(self, name, model, id=1):
-        ColorPrint.print_info("---------------------------------------------")
-        ColorPrint.print_info(f" Searching '{name}' device...                ")
-        ColorPrint.print_info("---------------------------------------------")
+        cprint.info(f" Searching '{name}' device...               ")
         self.name = name
         self.model = model
         self.id = id
-        self.pins = []
+        self.valves_pins = []
+        self.sensors_pins = []
         self.connection_attempt()
 
     def connect(self):
@@ -92,9 +75,7 @@ class ArduinoConnection:
         wait = 3  # seconds
         ser = pymata4.Pymata4(arduino_instance_id=self.id,
                               arduino_wait=wait)
-        ColorPrint.print_pass("---------------------------------------------")
-        ColorPrint.print_pass(f" Device '{self.name}' connected successfully ")
-        ColorPrint.print_pass("---------------------------------------------")
+        cprint.success(f" Device '{self.name}' connected successfully")
 
         return ser
 
@@ -107,16 +88,27 @@ class ArduinoConnection:
                 self.ser = self.connect()
                 break
             except Exception as _:
-                ColorPrint.print_warn(
+                cprint.warn(
                     f"Device '{self.name}' not found or serial port in use!")
                 time.sleep(1)  # wait before next connection attempt
         else:
-            ColorPrint.print_fail(
+            cprint.fail(
                 f"Unable to connect to device named '{self.name}'. Exiting...")
-            shutdown()
+            # shutdown()
             sys.exit(1)
 
-    def analog_to_digital(self, num):
+    def switch_all_off(self):
+        '''switch all pins off'''
+        for pins in self.valves_pins:
+            for pin in pins:
+                self.ser.digital_write(pin, OFF)
+                time.sleep(0.1)
+        for pins in self.sensors_pins:
+            for pin in pins:
+                self.ser.digital_write(pin, OFF)
+                time.sleep(0.1)
+
+    def _analog_to_digital(self, num) -> int:
         '''When configuring an analog input pin as a digital input/output,
         you must use the pin's digital pin number equivalent. For example,
         on an Arduino Uno, if you wish to use pin A0 as a digital pin,
@@ -128,118 +120,139 @@ class ArduinoConnection:
         '''
         return int(num + self.model.value)
 
-    def convert_pin_number(self, pin):
+    def _convert_pin_number(self, pins: list):
         '''convert analog pin to digital if required and
            use the correct pin numbering instead of board numbering/naming'''
-        if isinstance(pin, int):
-            return pin
-        elif isinstance(pin, str):
-            if pin[0].lower() == 'A'.lower():
-                return self.analog_to_digital(int(pin[1:]))
-            elif pin[0].lower() == 'D'.lower():
-                return int(pin[1:])
-            else:  # supposing string of only numbers
-                return int(pin)
+
+        if isinstance(pins, list):
+            for idx, pin in enumerate(pins):
+                for p in pin.split(','):
+                    # remove empty pin
+                    if len(p) < 1:
+                        del pins[idx]
+                        continue
+                    try:
+                        # try to convert to int
+                        p = int(p)
+                        pins[idx] = p
+                    except ValueError:
+                        if p[0].lower() == 'A'.lower():
+                            pins[idx] = self._analog_to_digital(int(p[1:]))
+                        elif p[0].lower() == 'D'.lower():
+                            pins[idx] = int(p[1:])
         else:  # unexpected type
             raise TypeError
 
-    def configure_pins(self, physical_pins):
-        '''set proper pin number and configure required pins as digital output'''
-        # convert physical pin name scheme with proper pin number
-        for i, pin in enumerate(physical_pins):
-            pin_number = self.convert_pin_number(pin)
-            self.pins.insert(i, pin_number)
-            # set all pins as digital output
-            self.ser.set_pin_mode_digital_output(pin_number)
-            time.sleep(0.1)  # lets be cautious and wait a little bit
-            self.ser.digital_write(pin_number, OFF)
-            time.sleep(0.1)  # lets be cautious and wait a little bit
+        return pins
 
-    def switch_onoff(self, pin_pos, wait=0):
-        '''turn on selected pins at pin_pos and turn off all others'''
-        for i, pin in enumerate(self.pins):
-            if i in pin_pos:
-                ColorPrint.print_info(f"Turning ON {self.name} {pin}\n")
-                self.ser.digital_write(pin, ON)
-            else:
+    def _init_pins(self, pins: list) -> list:
+        '''convert pin name scheme, set output mode and turn off all pins'''
+
+        for idx, pin in enumerate(pins):
+            if not isinstance(pin, list):
+                pins[idx] = [pin]
+
+        proper_pins = []
+        for idx, pin in enumerate(pins):
+            # convert pin name scheme, set output mode and turn off pins
+            proper_pins.append(self._convert_pin_number(pin))
+
+        # set all pins as digital output
+        for pins in proper_pins:
+            for pin in pins:
+                self.ser.set_pin_mode_digital_output(pin)
+                # turn off all pins at initialization
                 self.ser.digital_write(pin, OFF)
-            time.sleep(0.1)  # wait before turning off/on another GPIO pin
-        time.sleep(wait)
-        return
+                time.sleep(0.1)  # lets be cautious and wait a little bit
 
-    def loop(self, sensors, count):
+        return proper_pins
+
+    def configure_pins(self, valves_pins=None, sensors_pins=None):
+        '''set proper pin number and configure required pins as digital output'''
+
+        if valves_pins is not None:
+            self.valves_pins = self._init_pins(valves_pins)
+
+        if sensors_pins is not None:
+            self.sensors_pins = self._init_pins(sensors_pins)
+
+    def switch_onoff(self, pins_lst: list, pins_pos: list, wait: float = 0.0) -> None:
+        '''turn on selected pins at pins_pos and turn off all others'''
+        # check if pins_pos is a list
+        if not isinstance(pins_pos, list):
+            raise TypeError
+        # turn on select positions and turn off all others
+        for idx, pins in enumerate(pins_lst):
+            time.sleep(0.1)
+            if idx in pins_pos:
+                for pin in pins:
+                    cprint.info(f"Turning ON pin {pin}")
+                    self.ser.digital_write(pin, ON)
+            else:
+                for pin in pins:
+                    #cprint.info(f"Turning OFF pin {pin}")
+                    self.ser.digital_write(pin, OFF)
+        # global wait (if requested)
+        time.sleep(wait)
+
+    def sensors_loop(self, lcr_meter, sensors_pos, loop, rtime):
         '''loop through all the selected sensors'''
 
-        # LCR meter sampling rate
-        reading_rate = 1/10.0
-
-        # LCR meter sampling duration (in seconds) per sensor
-        reading_time = 3
-
         # LCR meter primary and secondary parameters
-        cols = ['primary', 'secondary']
+        params = {'primary': [], 'secondary': []}
 
-        # received data lists
-        rx_lst = lcr_meter.protocol.received_lines
-        str_lst = ['']*len(sensors)
+        # data structures to store the readings
+        sensors_lst = [f'S{idx}' for idx in sensors_pos]
+        sensors_dict = {sensor: copy.deepcopy(
+            params) for sensor in copy.deepcopy(sensors_lst)}
 
-        try:
-            while count > 0:
-                count = count - 1
-                for sensor in sensors:
-                    # first thing is to turn on the sensor and wait for it to settle
-                    self.switch_onoff([sensor])
-                    time.sleep(1)
-                    # now we empty the input buffer list
-                    rx_lst = []
-                    # wait 'reading_time' seconds
-                    for __ in range(int(reading_time/reading_rate)):
-                        time.sleep(reading_rate)
-                    rx_str = '\n'.join(rx_lst) + '\n'
-                    str_lst[sensor] += rx_str
-        except KeyboardInterrupt:
-            ColorPrint.print_fail("\nProgram interrupted")
-        finally:
-            shutdown()
+        while loop > 0:
+            loop -= 1
+            for spos in sensors_pos:
+                # first thing is to turn on the sensor and wait for it to settle
+                self.switch_onoff(self.sensors_pins, [spos])
+                # wait for the sensor to settle before taking a reading
+                time.sleep(0.5)
+                cprint.normal('Measuring...')
+                # now we empty the input buffer list
+                # lcr_meter.transport.serial.flush()
+                lcr_meter.protocol.received_lines = []
+                # read duration
+                time.sleep(rtime)
+                lines = copy.deepcopy(lcr_meter.protocol.received_lines)
+                for line in lines:
+                    pri, sec = line.split(',')
+                    sensors_dict[f'S{spos}']['primary'].append(
+                        float(pri))
+                    sensors_dict[f'S{spos}']['secondary'].append(
+                        float(sec))
 
-        # format the data into a list of dataframes
-        lst_df = []
-        for pos, data in enumerate(str_lst):
-            lst_df.insert(pos, pd.read_csv(
-                StringIO(data), sep=",", header=None, names=cols))
-
-        return lst_df
+        return sensors_dict
 
 
 class SerialConnection:
     '''threaded serial port connection'''
 
-    def __init__(self, name, port,
-                 baudrate=9600,
-                 parity=serial.PARITY_NONE,
-                 stopbits=serial.STOPBITS_ONE,
-                 bytesize=serial.EIGHTBITS,
-                 timeout=1):
+    def __init__(self, cfg):
 
-        ColorPrint.print_info("---------------------------------------------")
-        ColorPrint.print_info(f" Searching '{name}' device...                ")
-        ColorPrint.print_info("---------------------------------------------")
+        self.name = 'LCR'
+
+        cprint.info(f" Searching '{self.name}' device...        ")
 
         # generic device parameters
-        self.name = name
         self.ser = None
         self.transport = None
         self.protocol = None
         self.thread = None
 
         # serial connection parameters
-        self.port = port
-        self.url = port
-        self.baudrate = baudrate
-        self.parity = parity
-        self.stopbits = stopbits
-        self.bytesize = bytesize
-        self.timeout = timeout
+        self.port = str(cfg.get_setting("serial", "port"))
+        self.url = str(cfg.get_setting("serial", "port"))
+        self.baudrate = int(cfg.get_setting("serial", "baudrate"))
+        self.parity = str(cfg.get_setting("serial", "parity"))
+        self.stopbits = int(cfg.get_setting("serial", "stopbits"))
+        self.bytesize = int(cfg.get_setting("serial", "bytesize"))
+        self.timeout = int(cfg.get_setting("serial", "timeout"))
         self.ser_parameters = {'url': self.url,
                                'baudrate': self.baudrate,
                                'stopbits': self.stopbits,
@@ -262,7 +275,7 @@ class SerialConnection:
 
         # wait device to became ready
         if wait is not None:
-            ColorPrint.print_warn(
+            cprint.warn(
                 f"Waiting serial port ({self.name}) to became ready...")
             if isinstance(wait, int) and wait > 0:
                 time.sleep(wait)
@@ -273,13 +286,11 @@ class SerialConnection:
                     if str(wait.lower()) in self.protocol.received_lines:
                         break
                 else:
-                    ColorPrint.print_fail(
+                    cprint.fail(
                         f"***ERROR: Serial port ({self.name}) not ready, timed out!")
                     raise TimeoutError
 
-        ColorPrint.print_pass("---------------------------------------------")
-        ColorPrint.print_pass(f" Device '{self.name}' connected successfully ")
-        ColorPrint.print_pass("---------------------------------------------")
+        cprint.success(f" Device '{self.name}' connected successfully")
 
     def connection_attempt(self):
         '''attempts to connect to the serial port'''
@@ -290,18 +301,18 @@ class SerialConnection:
                 self.connect()
                 # set LCR trigger to manual/software controlled mode
                 time.sleep(0.2)
-                self.protocol.write_line('APER MED,5')
+                self.protocol.write_line('APER SLOW')
                 time.sleep(0.2)
                 self.protocol.write_line('TRIG:SOUR INT')
                 break
             except Exception as _:
-                ColorPrint.print_warn(
+                cprint.warn(
                     f"Device '{self.name}' not found or serial port in use!")
                 time.sleep(1)  # wait before next connection attempt
         else:
-            ColorPrint.print_fail(
+            cprint.fail(
                 f"Unable to connect to device named '{self.name}'. Exiting...")
-            shutdown()
+            # shutdown()
             sys.exit(1)
 
     def close(self):
@@ -333,92 +344,135 @@ class SerialReaderProtocolLine(LineReader):
     def connection_lost(self, exc):
         if exc:
             traceback.print_exc(exc)
-        ColorPrint.print_fail('Serial port closed\n')
+        cprint.warn('Serial port closed')
 
 
-def shutdown():
-    '''ends serial connections and close active threads'''
+def shutdown(lcr_meter, arduinos):
+    '''ends serial connections, closes active threads and turn off all valves and sensors'''
     try:
         # return lcr meter to manual trigger mode (stops auto measurement)
         lcr_meter.protocol.write_line('TRIG:SOUR MAN')
         time.sleep(0.1)
         lcr_meter.close()
-        for device in [valves_arduino, sensors_arduino]:
-            # turn off pin energy
-            for pin in device.pins:
-                device.ser.digital_write(pin, OFF)
-                time.sleep(0.1)
-            device.ser.shutdown()
+        for arduino in arduinos.values():
+            # turn off all pin energy
+            arduino.switch_all_off()
+            time.sleep(0.1)
+            arduino.ser.shutdown()
+            cprint.warn(f'Arduino {arduino.name} shutdown')
+        now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        cprint.bold(f'..:: Experiment ended at {now} ::..')
     except Exception as exc:
         traceback.print_exc(exc)
-    return
 
 
-def create_output_dir():
-    # base output directory
-    base_dir = 'experiments'
-
-    # date and time as subdirectory
-    timestr = time.strftime("%Y-%m-%d %H%M%S")
-
-    # create output directory if not exists
-    output_dir = os.path.abspath(os.path.join(base_dir, timestr))
-    if not os.path.exists(output_dir):
-        try:
-            os.makedirs(output_dir)
-        except Exception as _:
-            ColorPrint.print_fail(f"Unable to create output directory!")
-            shutdown()
-            sys.exit(1)
-
-    return output_dir
-
-
-def experiment():
-    '''make requried connections and start the experiment'''
-
-    # store retrieved data in a list of dataframes
-    data = []
-
-    # configure board pins
-    sensors_board_pins = ['A0', 'A1', 'A2', 'A3', 'A4', 'A5', 'D2', 'D3']
-    sensors_arduino.configure_pins(sensors_board_pins)
-
-    valves_board_pins = ['D2', 'D3', 'D4', 'D5', 'D6']
-    valves_arduino.configure_pins(valves_board_pins)
+def run_experiment(lcr_meter, arduinos, vloop, sloop, stime):
+    '''run the experiment'''
 
     # wait before starting a measurement
     time.sleep(1)
 
-    # choose sensors to use
-    sensors = range(0, 7)
+    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    cprint.bold(f'..:: Experiment started at {now}  ::..')
 
-    # experiment cycle
-    cycles = 4  # number of sensor reading cycles
+    # find out number of arduinos configured
+    if len(arduinos) == 1:
+        arduino_sensors = arduinos['all']
+        arduino_valves = arduinos['all']
+    else:
+        arduino_sensors = arduinos['sensors']
+        arduino_valves = arduinos['valves']
 
-    valve = 0
-    valves_arduino.switch_onoff([valve])
-    data[valve] = sensors_arduino.loop(sensors, cycles)
+    # choose which sensors and valves to use (default: all)
+    sensors_pos = range(len(arduino_sensors.sensors_pins))
+    valves_pos = range(len(arduino_valves.valves_pins))
 
-    valve = 1
-    valves_arduino.switch_onoff([valve])
-    data[valve] = sensors_arduino.loop(sensors, cycles)
+    # check if arduino is configured
+    empty_sensors = all(
+        len(elem) == 0 for elem in arduino_sensors.sensors_pins)
+    empty_valves = all(len(elem) == 0 for elem in arduino_valves.valves_pins)
+    if empty_sensors or empty_valves:
+        cprint.fail('Please configure arduino pins first!')
+        sys.exit(1)
 
-    # create output directory if not exists
-    output_dir = create_output_dir()
+    # store retrieved data in a list of dictionaries
+    data = []
+    valves_lst = [f'V{idx}' for idx in valves_pos]
 
-    # save data to several csv files
-    for valve in data:
-        for param in ['primary', 'secondary']:
-            # write two files with all sensors data
-            sensors_df = pd.concat(
-                [df_sensors[param] for df_sensors in data[valve]], ignore_index=True, axis=1)
-            fname = os.path.join(
-                output_dir, f'v{valve}_{param}_all_sensors.csv')
-            sensors_df.to_csv(fname, index=False)
-        for sensor in data[valve]:
-            # write one
-            fname = os.path.join(output_dir, f'v{valve}_s{sensor}.csv')
-            data[valve][sensor].to_csv(fname, index=False)
+    # main experiment loop
+    for _ in range(vloop):
+        valves_dict = {key: copy.deepcopy({})
+                       for key in copy.deepcopy(valves_lst)}
+        for vpos in valves_pos:
+            arduino_valves.switch_onoff(arduino_valves.valves_pins, [vpos])
+            valves_dict[f'V{vpos}'] = arduino_sensors.sensors_loop(lcr_meter,
+                                                                   sensors_pos,
+                                                                   sloop,
+                                                                   stime)
+        # append to list only after a valve cycle is completed
+        data.append(valves_dict)
 
-    return
+    return data
+
+
+def arduinos_connect(cfg) -> Dict[str, ArduinoConnection]:
+    '''connect to arduinos'''
+    boards = {}
+    # check if arduino2 is present/configured
+    device_model = str(cfg.get_setting("arduino2", "model"))
+    device_board = Board.MEGA if device_model == 'MEGA' else Board.UNO
+    device_sensors = str(cfg.get_setting("arduino2", "sensors")).split(';')
+    device_valves = str(cfg.get_setting("arduino2", "valves")).split(';')
+    empty_sensors = all(len(elem) == 0 for elem in device_sensors)
+    empty_valves = all(len(elem) == 0 for elem in device_valves)
+
+    if empty_sensors and empty_valves:  # one arduino only
+        device = 'arduino1'
+        device_model = str(cfg.get_setting(device, "model"))
+        device_board = Board.MEGA if device_model == 'MEGA' else Board.UNO
+        device_sensors = str(cfg.get_setting(
+            device, "sensors")).split(';')
+        device_valves = str(cfg.get_setting(device, "valves")).split(';')
+        sensors = [val.split(',') for val in device_sensors if len(val) > 0]
+        valves = [val.split(',') for val in device_valves if len(val) > 0]
+        boards['all'] = ArduinoConnection(
+            'valves & sensors', device_board, id=1)
+        boards['all'].configure_pins(
+            valves_pins=valves, sensors_pins=sensors)
+    else:  # two arduinos
+        if empty_sensors:  # find out which arduino is the sensors one
+            boards['valves'] = ArduinoConnection(
+                'valves', device_board, id=2)
+            # get other arduino configuration
+            other_device_model = str(cfg.get_setting("arduino1", "model"))
+            other_device_board = Board.MEGA if other_device_model == 'MEGA' else Board.UNO
+            boards['sensors'] = ArduinoConnection(
+                'sensors', other_device_board, id=1)
+            device_sensors = str(cfg.get_setting(
+                "arduino1", "sensors")).split(';')
+            device_valves = str(cfg.get_setting(
+                "arduino2", "valves")).split(';')
+            sensors = [val.split(',')
+                       for val in device_sensors if len(val) > 0]
+            valves = [val.split(',') for val in device_valves if len(val) > 0]
+            boards['valves'].configure_pins(valves_pins=valves)
+            boards['sensors'].configure_pins(sensors_pins=sensors)
+        elif empty_valves:
+            boards['sensors'] = ArduinoConnection(
+                'sensors', device_board, id=2)
+            # get other arduino configuration
+            other_device_model = str(cfg.get_setting("arduino1", "model"))
+            other_device_board = Board.MEGA if other_device_model == 'MEGA' else Board.UNO
+            boards['valves'] = ArduinoConnection(
+                'valves', other_device_board, id=1)
+            device_valves = str(cfg.get_setting(
+                "arduino1", "valves")).split(';')
+            device_sensors = str(cfg.get_setting(
+                "arduino2", "sensors")).split(';')
+            valves = [val.split(',') for val in device_valves if len(val) > 0]
+            sensors = [val.split(',')
+                       for val in device_sensors if len(val) > 0]
+            boards['sensors'].configure_pins(sensors_pins=sensors)
+            boards['valves'].configure_pins(valves_pins=valves)
+
+    return boards

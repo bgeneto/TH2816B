@@ -5,6 +5,7 @@ $(document).ready(function () {
   var socket = new WebSocket("ws://<web_ip>:<web_port>/ws");
 
   socket.onmessage = function (message) {
+    console.log('message received: ' + message.data);
     let data = received.val();
     received.val(data + message.data + '\n');
     /*received.append('<br>');*/

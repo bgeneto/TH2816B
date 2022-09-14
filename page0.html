@@ -1,0 +1,133 @@
+{% extends "templates/main.html" %}
+{% block body %}
+<!-- ========== main body start ========== -->
+<section class="tab-components">
+    <div class="container-fluid">
+
+        <div class="title-wrapper pt-30">
+            <div class="row align-items-center">
+                <div class="col-md-12">
+                    <div class="title mb-30">
+                        <h2 data-i18n="index.title"></h2>
+                        <p class="text-sm" data-i18n="[html]index.text"></p>
+                    </div>
+
+                </div>
+            </div>
+            <!-- end row -->
+        </div>
+
+        <div class="form-elements-wrapper">
+            <form id="sent" action="/form" method="post">
+                <input type="hidden" name="page_id" id="page_id" value="0">
+                <div class="row">
+                    <div class="col-md-12">
+                        <div class="card-style mb-30">
+                            <div class="input-style-1">
+                                <label class="uppercase" data-i18n="index.exp_name"></label>
+                                <input type="text" name="exp_name" id="exp_name"
+                                    data-i18n="[placeholder]index.exp_desc" />
+                            </div>
+                            <div class="input-style-1">
+                                <label class="uppercase" data-i18n="index.username"></label>
+                                <input type="text" name="username" id="username"
+                                    data-i18n="[placeholder]index.username" />
+                            </div>
+                            <div class="mb-3">
+                                <div class="button-group d-flex justify-content-left flex-wrap">
+                                    <button id="exp_start" type="submit" class="btn btn-primary"
+                                        data-i18n="index.button"></button>
+                                </div>
+                            </div>
+                        </div><!-- end card -->
+                    </div><!-- end col -->
+                </div><!-- end row -->
+            </form>
+        </div>
+
+        <!-- ========== form-elements-wrapper start ========== -->
+        <div class="form-elements-wrapper">
+            <!-- row -->
+            <div class="row">
+                <div class="col-md-12">
+                    <div class="card-style mb-30">
+                        <div class="input-style-1">
+                            <label class="uppercase" data-i18n="index.output"></label>
+                            <div class="log_output" id="devices_log" name="devices_log" data-i18n="index.log"></div>
+                        </div>
+                        <div class="mb-3">
+                            <div class="button-group d-flex justify-content-left flex-wrap">
+                                <button id="log_clear" type="button" class="btn btn-warning"
+                                    data-i18n="index.clr_button"></button>
+                            </div>
+                        </div>
+                    </div><!-- end card -->
+                </div><!-- end col -->
+            </div>
+            <!-- end row -->
+        </div>
+    </div>
+    <!-- end container -->
+</section>
+<!-- ========== main body end ========== -->
+{% end %}
+
+{% block modals %}
+<!-- modals -->
+<div id="modalContainer"></div>
+<div class="modal fade" id="cmdModal" tabindex="-1" aria-labelledby="cmdModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="cmdModalLabel">INFO</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" data-i18n="command.sent">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="modal fade" id="errModal" tabindex="-1" aria-labelledby="errModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="errModalLabel">ERROR</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" data-i18n="command.error">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-danger" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="modal fade" id="okModal" tabindex="-1" aria-labelledby="okModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="okModalLabel" data-i18n="page1.ok_msg_title"></h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" data-i18n="index.ok_msg">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-success" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- end modals -->
+{% end %}
+
+{% block scripts %}
+<script src="static/js/logger.js"></script>
+<script>
+    $('#log_clear').click(function () {
+        $('#devices_log').html('');
+    });
+</script>
+{% end %}

@@ -46,3 +46,80 @@ label.uppercase {
 .input-style-4 textarea[type="time"] {
   background: transparent;
 }
+
+div.resizable {
+  background: rgba(255, 255, 255, 0.5);
+  font-size: 2em;
+  border: 1px solid black;
+  overflow: hidden;
+  resize: both;
+  width: 160px;
+  height: 120px;
+  min-width: 120px;
+  min-height: 90px;
+  max-width: 400px;
+  max-height: 300px;
+}
+
+div.log_output {
+  overflow-y: scroll;
+  overflow-x: hidden;
+  max-height: 250px;
+}
+
+.resizable {
+  width: 480px;
+  overflow: hidden;
+  touch-action: none;
+  box-sizing: border-box;
+  hold: 1000;
+  z-index: 1;
+}
+
+.draggable {
+  z-index: 1;
+  right: 0px;
+  position: fixed;
+}
+
+.resize-drag {
+  width: 320px;
+  border-radius: 8px;
+  padding: 20px;
+  margin: 1rem;
+  background-color: #29e;
+  color: white;
+  font-size: 20px;
+  font-family: sans-serif;
+
+  touch-action: none;
+
+  /* This makes things *much* easier */
+  box-sizing: border-box;
+}
+
+#grid-snap {
+  width: 40%;
+  border-radius: 4px;
+  padding: 2%;
+  margin: 1rem 0 0 1rem;
+  background-color: #29e;
+  color: #fff;
+  font-size: 1.2em;
+  touch-action: none;
+}
+
+#drag,
+#drag-1,
+#drag-2 {
+  width: 25%;
+  min-height: 6.5em;
+  margin: 1rem 0 0 1rem;
+  background-color: whitesmoke;
+  color: white;
+  border-radius: 0.75em;
+  padding: 4%;
+  touch-action: none;
+  user-select: none;
+  transform: translate(0px, 0px);
+}

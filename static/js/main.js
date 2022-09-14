@@ -1,4 +1,15 @@
-(function () {
+$(document).ready(function () {
+  // get url parameters
+  let searchParams = new URLSearchParams(window.location.search);
+  // show modal message according to status url parameter
+  if (searchParams.has('status')) {
+    let param = searchParams.get('status');
+    if (param == 1) {
+      $('#okModal').modal('show');
+    } else {
+      $('#errModal').modal('show');
+    }
+  }
   /* ========= sidebar toggle ======== */
   const sidebarNavWrapper = document.querySelector(".sidebar-nav-wrapper");
   const mainWrapper = document.querySelector(".main-wrapper");
@@ -31,4 +42,4 @@
     overlay.classList.remove("active");
     mainWrapper.classList.remove("active");
   });
-})();
+});

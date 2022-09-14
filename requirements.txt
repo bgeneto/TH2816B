@@ -1,4 +1,8 @@
+plotly
+plotly-express
+numpy
 pandas
 pymata4
 pyserial
 tornado
+

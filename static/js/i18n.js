@@ -21,18 +21,18 @@ $(function () {
     // init i18next
     // for all options read: https://www.i18next.com/overview/configuration-options
     .init({
-      debug: true,
-      fallbackLng: 'en',
+      debug: false,
+      fallbackLng: 'pt',
       resources: {
         en: {
           translation: {
             head: {
               title: 'TH2816B LCR Meter WebGUI',
-              description: 'Web interface for TH2816B LCR Meter data processing'
+              description: 'Web interface for experiments with data acquisition via TH2816B LCR Meter'
             },
             intro: {
               title: 'TH2816B LCR Meter WebGUI',
-              subtitle: 'Web interface for TH2816B LCR Meter data processing'
+              subtitle: 'Web interface for experiments with data acquisition via TH2816B LCR Meter'
             },
             promo: {
               title: 'Warning',
@@ -51,26 +51,79 @@ $(function () {
               err: 'The following commands failed, please try again:',
               ok: 'All commands sent successfully!',
               sent: 'Experiment started successfully!',
-              error: 'Error starting the experiment. Please check parameters'
+              error: 'Error configuring the experiment. Please check parameters.'
             },
             menu: {
               pages: 'Pages',
-              index: 'TH2816B I/O',
-              page1: 'Connection',
-              page2: 'Experiment'
+              config: 'Configuration',
+              index: 'New Experiment',
+              page1: 'Experiment',
+              page2: 'Arduino',
+              page3: 'Communication',
+              page4: 'Results',
+              experiment: 'Experiment',
+            },
+            index: {
+              title: 'New Experiment',
+              exp_name: 'Description of the Experiment',
+              exp_desc: 'Describe your experiment',
+              button: 'Start Experiment',
+              clr_button: 'Clear',
+              output: 'Data output',
+              ok_msg: 'Experiment started successfully!',
+              log: 'Waiting for an experiment...',
+              username: 'Username',
             },
             page1: {
-              title: 'Connect devices',
-              button: 'Connect'
+              title: 'Experiment Configuration',
+              button: 'Config experiment',
+              sensor_duration: 'Duration of each sensor reading:',
+              duration_help: 'seconds',
+              loop_help: 'repeat',
+              sensors_loop: 'Number of repetitions for sensors:',
+              valves_loop: 'Number of repetitions for valves:',
+              ok_msg: 'Experiment configured successfully!',
+              ok_msg_title: 'Sucess',
+              err_msg: 'Could not configure experiment parameters!',
             },
             page2: {
-              title: 'Experiment Config',
+              title: 'Arduino Config',
+              text: "Don't forget to configure the <a href='/page?id=1'>experiment</a> (and the <a href='/page?id=2'>arduino</a>) before starting!",
+              text: 'Inform below which Arduino pins are configured for each sensor (or valve).<br> Leave blank to not configure an arduino, sensor, or valve.<br>',
               num_sensors: 'Number of Sensors',
-              duration: 'Duration of each sensor reading',
-              duration_help: 'seconds',
               sensor1: 'Sensor 1',
-              sensor1: 'Sensor 2',
-              button: 'Start experiment'
+              sensor2: 'Sensor 2',
+              button: 'Config arduino',
+              A1pins: '➲ ARDUINO 1 - PINS',
+              A2pins: '➲ ARDUINO 2 - PINS',
+              sensors: 'Sensors <span><i class="lni lni-question-circle" title="input example: D8 or D22,D23 (two pins for one sensor)"></i></span>',
+              valves: 'Valves <span><i class="lni lni-question-circle" title="input example: D8 or D22,D23 (two pins for one valve)"></i></span>',
+              S01: 'S01',
+              S02: 'S02',
+              S03: 'S03',
+              S04: 'S04',
+              S05: 'S05',
+              S06: 'S06',
+              S07: 'S07',
+              S08: 'S08',
+              V01: 'V01',
+              V02: 'V02',
+              V03: 'V03',
+              V04: 'V04',
+              V05: 'V05',
+              V06: 'V06',
+              V07: 'V07',
+              V08: 'V08',
+              ok_msg: 'Arduinos configured successfully!',
+              ok_msg_title: 'Sucess',
+              err_msg: 'Could not configure arduinos!',
+              arduino_model: 'Arduino Model',
+            },
+            page3: {
+              title: 'Use this page to send commands to and receive data from the TH2816B LCR Meter',
+            },
+            page4: {
+              title: 'Finished Experiments',
             },
             configure: {
               button: 'Configure'
@@ -81,11 +134,11 @@ $(function () {
           translation: {
             head: {
               title: 'TH2816B LCR Meter WebGUI',
-              description: 'Interface web para aquisição de dados do LCR Meter TH2816B'
+              description: 'Interface web para experimentação com aquisição de dados via LCR Meter TH2816B'
             },
             intro: {
               title: 'TH2816B LCR Meter WebGUI',
-              subtitle: 'Interface web para aquisição de dados do LCR Meter TH2816B'
+              subtitle: 'Interface web para experimentação com aquisição de dados via LCR Meter TH2816B'
             },
             promo: {
               title: 'Aviso',
@@ -104,26 +157,79 @@ $(function () {
               err: 'Os seguintes comandos falharam, tente novamente:',
               ok: 'Todos os comandos foram registrados com sucesso!',
               sent: 'Experimento iniciado com sucesso!',
-              error: 'Erro ao iniciar o experimento. Cheque os parâmetros configurados.'
+              error: 'Erro ao configurar o experimento. Cheque os parâmetros.'
             },
             menu: {
               pages: 'Páginas',
-              index: 'TH2816B E/S',
-              page1: 'Conexão',
-              page2: 'Experimento'
+              config: 'Configuração',
+              index: 'Novo Experimento',
+              page1: 'Experimento',
+              page2: 'Arduino',
+              page3: 'Comunicação',
+              page4: 'Resultados',
+              experiment: 'Experimento',
+            },
+            index: {
+              title: 'Novo Experimento',
+              text: 'Não esqueça de configurar o <a href="/page?id=1">experimento</a> (e o <a href="/page?id=2">arduino</a>) antes de iniciar!',
+              exp_name: 'Descrição do Experimento',
+              exp_desc: 'Descreva seu experimento',
+              button: 'Iniciar Experimento',
+              clr_button: 'Limpar',
+              output: 'Saída de dados',
+              ok_msg: 'Experimento iniciado com sucesso!',
+              log: 'Aguardando novo experimento...',
+              username: 'Nome do usuário',
             },
             page1: {
-              title: 'Conectar dispositivos',
-              button: 'Conectar'
+              title: 'Configuração do Experimento',
+              button: 'Configurar experimento',
+              sensors_duration: 'Duração de leitura cada sensor:',
+              duration_help: 'segundos',
+              loop_help: 'repetições',
+              sensors_loop: 'Quantidade de repetições para os sensores:',
+              valves_loop: 'Quantidade de repetições para as válvulas:',
+              ok_msg: 'Experimento configurado com sucesso!',
+              ok_msg_title: 'Sucesso',
+              err_msg: 'Não foi possível configurar o experimento!',
             },
             page2: {
-              title: 'Configuração do Experimento',
+              title: 'Configuração do Arduino',
+              text: 'Informe abaixo quais pinos do arduino estão ligados em cada sensor (ou válvula).<br> Deixe em branco para não configurar um arduino, sensor ou válvula.<br>',
               num_sensors: 'Número de sensores',
-              duration: 'Duração de leitura cada sensor',
-              duration_help: 'segundos',
               sensor1: 'Sensor 1',
-              sensor1: 'Sensor 2',
-              button: 'Iniciar experimento'
+              sensor2: 'Sensor 2',
+              button: 'Configurar arduino',
+              A1pins: 'ARDUINO 1 - PINOS',
+              A2pins: 'ARDUINO 2 - PINOS',
+              sensors: 'Sensores <span><i class="lni lni-question-circle" title="exemplo: D8 ou D22,D23 (dois pinos para um sensor)"></i></span>',
+              valves: 'Válvulas <span><i class="lni lni-question-circle" title="exemplo: D8 ou D22,D23 (dois pinos para uma válvula)"></i></span>',
+              S01: 'S01',
+              S02: 'S02',
+              S03: 'S03',
+              S04: 'S04',
+              S05: 'S05',
+              S06: 'S06',
+              S07: 'S07',
+              S08: 'S08',
+              V01: 'V01',
+              V02: 'V02',
+              V03: 'V03',
+              V04: 'V04',
+              V05: 'V05',
+              V06: 'V06',
+              V07: 'V07',
+              V08: 'V08',
+              ok_msg: 'Arduinos configurados com sucesso!',
+              ok_msg_title: 'Sucesso',
+              err_msg: 'Não foi possível configurar o arduino!',
+              arduino_model: 'Modelo do Arduino',
+            },
+            page3: {
+              title: 'Use esta página para enviar comandos e visualizar os dados capturados pelo medidor LCR TH2816B',
+            },
+            page4: {
+              title: 'Experimentos Concluídos',
             },
             configure: {
               button: 'Configure'
@@ -147,7 +253,7 @@ $(function () {
         $('#languageSwitcher').append(opt);
       });
       $('#languageSwitcher').change((a, b, c) => {
-        const chosenLng = $(this).find("option:selected").attr('value');
+        const chosenLng = $('#languageSwitcher').find("option:selected").attr('value');
         i18next.changeLanguage(chosenLng, () => {
           rerender();
         });

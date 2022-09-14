@@ -1,94 +1,6 @@
-<!DOCTYPE html>
-<html lang="en">
-
-<head>
-  <meta name="description" content="" />
-  <meta charset="UTF-8" />
-  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <link rel="shortcut icon" href="static/images/favicon.svg" type="image/x-icon" />
-  <title data-i18n="head.title"></title>
-
-  <!-- ========== All CSS files ========= -->
-  <link rel="stylesheet" href="static/css/bootstrap.min.css" />
-  <link rel="stylesheet" href="static/css/lineicons.css" />
-  <link rel="stylesheet" href="static/css/materialdesignicons.min.css" />
-  <link rel="stylesheet" href="static/css/fullcalendar.css" />
-  <link rel="stylesheet" href="static/css/main.css" />
-  <link rel="stylesheet" href="static/css/custom.css" />
-</head>
-
-<body>
-
-  <!-- ======== sidebar-nav start =========== -->
-  <aside class="sidebar-nav-wrapper">
-    <div class="navbar-logo">
-      <a href="index.html">
-        <img src="static/images/logo/logo.svg" alt="logo" />
-      </a>
-    </div>
-    <nav class="sidebar-nav">
-      <ul>
-        <li class="nav-item nav-item-has-children">
-          <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_1" aria-controls="ddmenu_1"
-            aria-expanded="true" aria-label="Toggle navigation">
-            <span class="icon">
-              <svg width="22" height="22" viewBox="0 0 22 22">
-                <path
-                  d="M17.4167 4.58333V6.41667H13.75V4.58333H17.4167ZM8.25 4.58333V10.0833H4.58333V4.58333H8.25ZM17.4167 11.9167V17.4167H13.75V11.9167H17.4167ZM8.25 15.5833V17.4167H4.58333V15.5833H8.25ZM19.25 2.75H11.9167V8.25H19.25V2.75ZM10.0833 2.75H2.75V11.9167H10.0833V2.75ZM19.25 10.0833H11.9167V19.25H19.25V10.0833ZM10.0833 13.75H2.75V19.25H10.0833V13.75Z" />
-              </svg>
-            </span>
-            <span class="text" data-i18n="menu.pages"></span>
-          </a>
-          <ul id="ddmenu_1" class="collapse show dropdown-nav">
-            <li>
-              <a href="/" data-i18n="menu.index"></a>
-            </li>
-            <li>
-              <a href="/page?id=1" class="active" data-i18n="menu.page1"></a>
-            </li>
-            <li>
-              <a href="/page?id=2" data-i18n="menu.page2"></a>
-            </li>
-          </ul>
-        </li>
-      </ul>
-    </nav>
-    <div class="promo-box">
-      <h3 data-i18n="promo.title"></h3>
-      <p data-i18n="promo.text"></p>
-    </div>
-  </aside>
-  <div class="overlay"></div>
-  <!-- ======== sidebar-nav end =========== -->
-
-  <main class="main-wrapper">
-
-    <!-- ========== top header start ========== -->
-    <header class="header">
-      <div class="container-fluid">
-        <div class="row">
-          <div class="col-lg-2 col-md-2 col-3">
-            <div class="header-left d-flex align-items-center">
-              <div class="menu-toggle-btn mr-20">
-                <button id="menu-toggle" class="main-btn primary-btn btn-hover">
-                  <i class="lni lni-chevron-left me-2"></i>Menu
-                </button>
-              </div>
-            </div>
-          </div>
-          <div class="col-lg-8 col-md-8 col-7">
-            <div class="header-left text-center">
-              <h1 data-i18n="intro.title"></h1>
-              <p data-i18n="intro.subtitle"></p>
-            </div>
-          </div>
-        </div>
-      </div>
-    </header>
-    <!-- ========== top header end ========== -->
-
-    <!-- ========== tab components start ========== -->
+{% extends "templates/main.html" %}
+{% block body %}
+    <!-- ========== main body start ========== -->
     <section class="tab-components">
       <div class="container-fluid">
 
@@ -106,80 +18,54 @@
           <span data-i18n="command.err"></span><br>
           <span id="alert-msg-text"></span>
         </div>
-
         <div id="ok-msg" class="alert alert-success" role="alert" style="display: none">
           <span data-i18n="command.ok"></span>
         </div>
 
-        <form id="form-sent" class="row g-2">
+        <form id="page1-form" action="/form" method="post" class="row g-2">
+          <input type="hidden" name="page_id" id="page_id" value="1">
           <textarea id="received" hidden></textarea>
-            <div class="form-elements-wrapper">
-              <!-- row -->
-              <div class="row">
-                <div class="col-lg-12">
-                  <div class="mb-3">
-                    <div class="button-group d-flex justify-content-left flex-wrap">
-                      <button id="experiment_send" type="submit" class="btn btn-primary" data-i18n="page1.button"></button>
-                      &nbsp;&nbsp;<button id="page1_clear" type="button" class="btn btn-warning"
-                        data-i18n="data.button"></button>
-                    </div>
+          <div class="row">
+            <div class="col-lg-6">
+              <div class="card-style mb-30">
+                <div class="input-group mb-3">
+                  <div class="input-style-4">
+                    <label for="valves_loop" class="uppercase" data-i18n="page1.valves_loop"></label>
+                    <input type="number" min="1" max="3600" maxlength="4" name="valves_loop" id="valves_loop"
+                      data-i18n="[placeholder]page1.loop_help" value="{{ valves_loop }}" />&nbsp;<span data-i18n="page1.loop_help"></span>
                   </div>
-                  <div class="card-style mb-30">
-                    <div class="input-style-1">
-                      <label class="uppercase" data-i18n="data.output_label"></label>
-                      <textarea id="received" rows="8">Connecting...</textarea>
-                    </div>
-                    <button id="clear" type="button" class="btn btn-warning" data-i18n="data.button"></button>
-                  </div><!-- end card -->
-                </div><!-- end col -->
-              </div>
-                  <!-- end row -->
                 </div>
-              </div><!-- end card -->
-            </div><!-- end col -->
-          </div><!-- end row -->
+                <div class="input-group mb-3">
+                  <div class="input-style-4">
+                    <label for="sensors_loop" class="uppercase" data-i18n="page1.sensors_loop"></label>
+                    <input type="number" min="1" max="3600" maxlength="4" name="sensors_loop" id="sensors_loop"
+                      data-i18n="[placeholder]page1.loop_help" value="{{ sensors_loop }}" />&nbsp;<span data-i18n="page1.loop_help"></span>
+                  </div>
+                </div>
+                <div class="input-group mb-3">
+                  <div class="input-style-4">
+                    <label for="sensors_duration" class="uppercase" data-i18n="page1.sensors_duration"></label>
+                    <input type="number" min="1" max="3600" maxlength="4" name="sensors_duration" id="sensors_duration"
+                      data-i18n="[placeholder]page1.duration_help" value="{{ sensors_duration }}" />&nbsp;<span data-i18n="page1.duration_help"></span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="mb-3">
+            <div class="button-group d-flex justify-content-left flex-wrap">
+              <button id="experiment_config" type="submit" class="btn btn-primary" data-i18n="page1.button"></button>
+              &nbsp;&nbsp;<button id="page1_clear" type="button" class="btn btn-warning"
+                data-i18n="data.button"></button>
+            </div>
+          </div>
         </form>
-
       </div>
-      </div>
-      <!-- end container -->
     </section>
-    <!-- ========== tab components end ========== -->
+    <!-- ========== main body end ========== -->
+{% end %}
 
-    <!-- ========== footer start =========== -->
-
-    <footer class="footer">
-      <div class="container-fluid">
-        <div class="row">
-          <div class="col-md-6 order-last order-md-first">
-            <div class="copyright text-center text-md-start">
-              <select name="language" id="languageSwitcher">
-              </select>
-            </div>
-          </div>
-          <!-- end col-->
-          <div class="col-md-6">
-            <div class="
-                terms
-                d-flex
-                justify-content-center justify-content-md-end
-              ">
-              <p class="text-sm">
-                Designed and developed by bgeneto using
-                <a href="https://plainadmin.com" rel="nofollow" target="_blank">
-                  PlainAdmin
-                </a>
-              </p>
-            </div>
-          </div>
-        </div>
-        <!-- end row -->
-      </div>
-      <!-- end container -->
-    </footer>
-    <!-- ========== footer end =========== -->
-
-  </main>
+{% block modals %}
   <!-- modals -->
   <div id="modalContainer"></div>
   <div class="modal fade" id="cmdModal" tabindex="-1" aria-labelledby="cmdModalLabel" aria-hidden="true">
@@ -207,26 +93,30 @@
         <div class="modal-body" data-i18n="command.error">
         </div>
         <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+          <button type="button" class="btn btn-danger" data-bs-dismiss="modal">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="modal fade" id="okModal" tabindex="-1" aria-labelledby="okModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="okModalLabel" data-i18n="page1.ok_msg_title"></h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body" data-i18n="page1.ok_msg">
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-success" data-bs-dismiss="modal">Close</button>
         </div>
       </div>
     </div>
   </div>
   <!-- end modals -->
+{% end %}
 
-  <!-- ========= All Javascript files ======== -->
-  <script src="static/js/bootstrap.bundle.min.js"></script>
-  <script src="static/js/fullcalendar.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/i18next/21.6.14/i18next.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-i18next/1.2.1/jquery-i18next.min.js"></script>
-  <script
-    src="https://cdn.jsdelivr.net/npm/i18next-browser-languagedetector@6.1.3/i18nextBrowserLanguageDetector.min.js"></script>
-  <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
-  <script src="static/js/websocket.js"></script>
-  <script src="static/js/i18n.js"></script>
-  <script src="static/js/main.js"></script>
-</body>
-
+{% block scripts %}
 <script>
   String.prototype.format = function () {
     var i = 0, args = arguments;
@@ -251,33 +141,10 @@
       return new bootstrap.Tooltip(tooltipTriggerEl)
     });
     $('#page1_clear').click(function () {
-      $('#form-sent')[0].reset();
+      $('#page1-form')[0].reset();
       $("#alert-msg").attr("style", "display:none");
       $("#ok-msg").attr("style", "display:none");
     });
-    $("#add_sensors").click(function () {
-      var newRowAdd = '';
-      let num_sensors = $("#num_sensors").val();
-      for (var i = 0; i < num_sensors; i++) {
-        newRowAdd +=
-          '<div id="row">' +
-          '<div class="input-group mb-3">' +
-          '<div class="input-style-4">' +
-          '<label for="sensor{}" class="uppercase" data-i18n="page1.sensor"></label>'.format(i+1) +
-          '<input type="number" id="duration{}" data-i18n="[placeholder]page1.duration" />'.format(i+1) +
-          '&nbsp;<button id="DeleteRow" class="btn btn-outline-danger" type="button"' +
-          'data-bs-toggle="tooltip" data-bs-placement="top"' +
-          'title="delete">delete</button>' +
-          '</div>' +
-          '</div>' +
-          '</div>';
-      }
-      $('#newinput').append(newRowAdd);
-    });
-    $("body").on("click", "#DeleteRow", function () {
-      $(this).parents("#row").remove();
-    })
   });
 </script>
-
-</html>
+{% end %}
