@@ -1,13 +1,28 @@
 #!/usr/bin/env python3
-# -*- coding: UTF-8 -*-
+# -*- coding: utf-8 -*-
+#
+# Copyright (c) 2022 by bgeneto <b g e n e t o @ g m a i l . c o m>
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+
 """TH2816B LCR Meter WebGUI.
 Web interface for TH2816B LCR Meter data processing.
 Author:   b g e n e t o @ g m a i l . c o m
-History:  v0.0.1  Initial release
-          v0.0.2  Configure options via config (ini) file
+
 """
 
-from genericpath import isfile
 import json
 import multiprocessing
 import os
@@ -17,6 +32,7 @@ from datetime import date
 import pandas as pd
 import plotly
 import plotly.express as px
+import tornado.autoreload
 import tornado.concurrent
 import tornado.gen
 import tornado.httpserver
@@ -34,20 +50,12 @@ __email__ = "b g e n e t o @ g m a i l d o t c o m"
 __copyright__ = "Copyright 2022, Bernhard Enders"
 __license__ = "GPL"
 __status__ = "Development"
-__version__ = "0.1.6"
-__date__ = "20220913"
+__version__ = "0.1.8"
+__date__ = "20220914"
 __year__ = date.today().year
 
-clients = []
-
-input_queue = multiprocessing.Queue()
-output_queue = multiprocessing.Queue()
-
-sensors_input_queue = multiprocessing.Queue()
-sensors_output_queue = multiprocessing.Queue()
-
-valves_input_queue = multiprocessing.Queue()
-valves_output_queue = multiprocessing.Queue()
+# global variables
+BASE_EXP_DIR = 'experiments'
 
 
 class IndexHandler(tornado.web.RequestHandler):
@@ -288,63 +296,15 @@ class FormHandler(tornado.web.RequestHandler):
 
         # update experiment directory index pages
         parser = indexer.add_args()
-        args = parser.parse_args(['experiments', '--recursive'])
+        args = parser.parse_args([BASE_EXP_DIR, '--recursive'])
         indexer.process_dir(args.top_dir, args)
-
-
-class WebSocketHandler(tornado.websocket.WebSocketHandler):
-    def open(self):
-        print('DEBUG: new ws connection request')
-        clients.append(self)
-        self.write_message(" Serial device connected! ")
-
-    def on_message(self, message):
-        print('DEBUG: tornado received from client: {}'.format(json.dumps(message)))
-        # self.write_message('ack')
-        input_queue.put(message)
-
-    def on_close(self):
-        print('DEBUG: ws connection closed')
-        clients.remove(self)
-
-
-def check_queue():
-    '''check the queue for pending messages, and reply that to all connected clients'''
-    if not output_queue.empty():
-        message = output_queue.get()
-        for c in clients:
-            c.write_message(message)
-
-
-def setup_ws(web_ip, web_port):
-    # template and js files
-    ws_template = os.path.join(
-        SCRIPT_DIR, "static", "js", "websocket.template.js")
-    ws_file = os.path.join(SCRIPT_DIR, "static", "js", "websocket.js")
-
-    # check if websocket template file (provided) exists
-    if not os.path.isfile(ws_template):
-        print('FATAL: template file not found')
-        os._exit(os.EX_CONFIG)
-
-    # always write a new websocket javascript file based on ini settings
-    with open(ws_template, 'r') as tf:
-        data = tf.read()
-
-    # user defined ip and port
-    data = data.replace('<web_ip>', web_ip).replace(
-        '<web_port>', str(web_port))
-
-    # write up-to-date js file
-    with open(ws_file, 'w') as js:
-        js.write(data)
 
 
 def create_output_dir(topdir=None, subdirs=None):
     '''create data output directory'''
     # base output directory
-    base_dir = 'experiments' if topdir is None else os.path.join(
-        'experiments', topdir)
+    base_dir = BASE_EXP_DIR if topdir is None else os.path.join(
+        BASE_EXP_DIR, topdir)
 
     # date and time as subdirectory
     timestr = time.strftime("%Y-%m-%d %Hh%Mm%Ss")
@@ -355,17 +315,19 @@ def create_output_dir(topdir=None, subdirs=None):
         try:
             os.makedirs(output_dir)
         except Exception as _:
-            print("ERROR: Unable to create output directory!")
+            print("ERROR: Unable to create output directory! Check permissions...")
             # shutdown()
             os._exit(os.EX_CONFIG)
 
     if subdirs is not None:
         for subdir in subdirs:
-            try:
-                os.makedirs(os.path.join(output_dir, subdir))
-            except Exception as _:
-                print("ERROR: Unable to create output subdirectory!")
-                os._exit(os.EX_CONFIG)
+            if not os.path.exists(os.path.join(output_dir, subdir)):
+                try:
+                    os.makedirs(os.path.join(output_dir, subdir))
+                except Exception as _:
+                    print(
+                        "ERROR: Unable to create output subdirectory! Check permissions...")
+                    os._exit(os.EX_CONFIG)
 
     return output_dir
 
@@ -382,9 +344,6 @@ if __name__ == '__main__':
     cfg = mycfg.MyConfig(CFGFN)
     ser_params, web_params = cfg.read_config()
 
-    # setup ip and port
-    setup_ws(**web_params)
-
     # start the serial worker in background (as a deamon)
     # sp = serialworker.SerialProcess(
     #    input_queue, output_queue, serial_port, baud_rate, timeout)
@@ -394,14 +353,13 @@ if __name__ == '__main__':
     # tornado setup
     handlers = [
         (r"/", IndexHandler),
-        (r"/ws", WebSocketHandler),
         (r"/page", PageHandler),
         (r"/form", FormHandler),
         (r"/ajax", AjaxHandler),
         (r"/static/(.*)", tornado.web.StaticFileHandler,
          {'path': './static'}),
-        (r"/experiments/(.*)", tornado.web.StaticFileHandler,
-         {'path': './experiments', "default_filename": "index.html"}),
+        (r"/{}/(.*)".format(BASE_EXP_DIR), tornado.web.StaticFileHandler,
+         {'path': f'./{BASE_EXP_DIR}', "default_filename": "index.html"}),
     ]
     settings = dict(
         template_path=os.path.join(os.path.dirname(__file__), "templates"),
@@ -417,22 +375,15 @@ if __name__ == '__main__':
     print("Web server listening on http://{web_ip}:{web_port}".format(
         **web_params))
 
+    tornado.autoreload.start()
+    tornado.autoreload.watch(os.path.join(BASE_EXP_DIR, 'index.html'))
     main_loop = tornado.ioloop.IOLoop().current()
-
-    # adjust the scheduler_interval according to the frames sent by the serial port
-    SCHEDULER_INTERVAL = 100
-    scheduler = tornado.ioloop.PeriodicCallback(
-        check_queue, SCHEDULER_INTERVAL)
 
     # tornado main loop
     try:
-        scheduler.start()
         main_loop.start()
     except Exception as exp:
         pass
     finally:
-        input_queue.close()
-        output_queue.close()
-        scheduler.stop()
         http_server.stop()
         print('\nWeb server stopped!')

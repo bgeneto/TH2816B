@@ -35,14 +35,15 @@ __maintainer__ = "Bernhard Enders"
 __email__ = "b g e n e t o @ g m a i l d o t c o m"
 __copyright__ = "Copyright 2022, Bernhard Enders"
 __license__ = "GPL"
-__version__ = "0.1.11"
-__date__ = "20220913"
+__version__ = "0.1.12"
+__date__ = "20220914"
 __status__ = "Development"
 
 # global constants
 ON = 1
 OFF = 2
 
+global_counter = 0
 cprint = ColorPrint(__name__ + '.log')
 
 
@@ -195,8 +196,9 @@ class ArduinoConnection:
         # global wait (if requested)
         time.sleep(wait)
 
-    def sensors_loop(self, lcr_meter, sensors_pos, loop, rtime):
+    def sensors_loop(self, lcr_meter, sensors_pos, sloop, vloop, rtime):
         '''loop through all the selected sensors'''
+        global global_counter
 
         # LCR meter primary and secondary parameters
         params = {'primary': [], 'secondary': []}
@@ -206,16 +208,18 @@ class ArduinoConnection:
         sensors_dict = {sensor: copy.deepcopy(
             params) for sensor in copy.deepcopy(sensors_lst)}
 
-        while loop > 0:
-            loop -= 1
+        nsensors = len(sensors_pos)
+        for _ in range(sloop):
             for spos in sensors_pos:
+                global_counter += 1
                 # first thing is to turn on the sensor and wait for it to settle
                 self.switch_onoff(self.sensors_pins, [spos])
                 # wait for the sensor to settle before taking a reading
                 time.sleep(0.5)
-                cprint.normal('Measuring...')
+                percent = round(50.0*global_counter/(nsensors*sloop*vloop))
+                cprint.normal(f'Measuring... {percent}% completed')
                 # now we empty the input buffer list
-                # lcr_meter.transport.serial.flush()
+                lcr_meter.transport.serial.flush()
                 lcr_meter.protocol.received_lines = []
                 # read duration
                 time.sleep(rtime)
@@ -408,6 +412,7 @@ def run_experiment(lcr_meter, arduinos, vloop, sloop, stime):
             valves_dict[f'V{vpos}'] = arduino_sensors.sensors_loop(lcr_meter,
                                                                    sensors_pos,
                                                                    sloop,
+                                                                   vloop,
                                                                    stime)
         # append to list only after a valve cycle is completed
         data.append(valves_dict)

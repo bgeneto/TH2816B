@@ -1,4 +1,8 @@
 {% block navbar %}
+<!-- avoids browser caching -->
+{% import random %}
+{% set rand = random.randint(0, 2147483647) %}
+<!-- avoids browser caching -->
     <!-- ======== sidebar-nav start =========== -->
     <aside class="sidebar-nav-wrapper">
       <div class="navbar-logo">
@@ -26,7 +30,7 @@
                       </li>
                       <li>
                           <!--<a href="/experiments/index.html" data-i18n="menu.page4"></a>-->
-                          <a href="/page?id=4" {% if page_id == 4 %} class="active" {% end %} data-i18n="menu.page4"></a>
+                          <a href="/page?id=4&var={{ rand }}" {% if page_id == 4 %} class="active" {% end %} data-i18n="menu.page4"></a>
                       </li>
                       <!--
                       <li>
