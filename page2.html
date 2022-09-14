@@ -1,407 +1,404 @@
 {% extends "templates/main.html" %}
 {% block body %}
-    <!-- ========== main body start ========== -->
-    <section class="tab-components">
-      <div class="container-fluid">
+<!-- ========== main body start ========== -->
+<section class="tab-components">
+  <div class="container-fluid">
 
-        <div class="title-wrapper pt-30">
-          <div class="row align-items-center">
-            <div class="col-md-8">
-              <div class="title mb-30">
-                <h2 data-i18n="page2.title"></h2>
-                <p class="text-sm" data-i18n="[html]page2.text"></p>
+    <div class="title-wrapper pt-30">
+      <div class="row align-items-center">
+        <div class="col-md-8">
+          <div class="title mb-30">
+            <h2 data-i18n="page2.title"></h2>
+            <p class="text-sm" data-i18n="[html]page2.text"></p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="alert-msg" class="alert alert-danger" role="alert" style="display: none">
+      <span data-i18n="command.err"></span><br>
+      <span id="alert-msg-text"></span>
+    </div>
+    <div id="ok-msg" class="alert alert-success" role="alert" style="display: none">
+      <span data-i18n="command.ok"></span>
+    </div>
+
+    <form id="page2-form" action="/form" method="post" class="row g-2">
+      <input type="hidden" name="page_id" id="page_id" value="2">
+      <textarea id="received" hidden></textarea>
+      <div class="row">
+        <div class="col-lg-12">
+          <div class="card-style mb-30">
+            <h5 class="mb-25" data-i18n="page2.A1pins"></h5>
+            <!-- begin checkbox -->
+            <div class="form-check checkbox-style mb-20">
+              {% if len(a1_onoff) and int(a1_onoff) == 1 %}
+              <input class="form-check-input" type="checkbox" value="1" id="A1onoff" name="A1onoff" checked />
+              {% else %}
+              <input class="form-check-input" type="checkbox" value="1" id="A1onoff" name="A1onoff" />
+              {% end %}
+              <label class="form-check-label" for="A1onoff" data-i18n="page2.onoff"></label>
+            </div>
+            <!-- end checkbox -->
+            <div class="select-style-1" style="width: 19ex;">
+              <label for="A1M" class="uppercase" data-i18n="page2.arduino_model"></label>
+              <div class="select-position">
+                <select id="A1M" name="A1M">
+                  {% if len(a1_model) and a1_model[0] == 'MEGA' %}
+                  <option value="MEGA" selected>MEGA</option>
+                  <option value="UNO">UNO</option>
+                  {% else %}
+                  <option value="UNO" selected>UNO</option>
+                  <option value="MEGA">MEGA</option>
+                  {% end %}
+                </select>
               </div>
             </div>
-          </div>
-        </div>
-
-        <div id="alert-msg" class="alert alert-danger" role="alert" style="display: none">
-          <span data-i18n="command.err"></span><br>
-          <span id="alert-msg-text"></span>
-        </div>
-        <div id="ok-msg" class="alert alert-success" role="alert" style="display: none">
-          <span data-i18n="command.ok"></span>
-        </div>
-
-        <form id="page2-form" action="/form" method="post" class="row g-2">
-          <input type="hidden" name="page_id" id="page_id" value="2">
-          <textarea id="received" hidden></textarea>
-          <div class="row">
-            <div class="col-lg-12">
-              <div class="card-style mb-30">
-                <h5 class="mb-25" data-i18n="page2.A1pins"></h5>
-                <div class="select-style-1" style="width: 19ex;">
-                  <label for="A1M" class="uppercase" data-i18n="page2.arduino_model"></label>
-                  <div class="select-position">
-                    <select id="A1M" name="A1M">
-                      {% if len(a1_model) and a1_model[0] == 'MEGA' %}
-                      <option value="MEGA" selected>MEGA</option>
-                      <option value="UNO">UNO</option>
-                      {% else %}
-                      <option value="UNO" selected>UNO</option>
-                      <option value="MEGA">MEGA</option>
-                      {% end %}
-                    </select>
-                  </div>
-                </div>
-                <h6 class="mb-25" data-i18n="[html]page2.sensors"></h6>
-                <div class="table-wrapper table-responsive">
-                  <table class="table">
-                    <thead>
-                      <tr>
-                        <th>Sensor 1</th>
-                        <th>Sensor 2</th>
-                        <th>Sensor 3</th>
-                        <th>Sensor 4</th>
-                        <th>Sensor 5</th>
-                        <th>Sensor 6</th>
-                        <th>Sensor 7</th>
-                        <th>Sensor 8</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr>
-                        <td class="min-width">
-                          <div class="input-style-1">
-                            <input type="text" maxlength="8" style="width: 12ex;" value="{{ a1_sensors[0] }}"
-                              name="A1S0" />
-                          </div>
-                        </td>
-                        <td class="min-width">
-                          <div class="input-style-1">
-                            <input type="text" maxlength="8" style="width: 12ex;" value="{{ a1_sensors[1] }}"
-                              name="A1S1" />
-                          </div>
-                        </td>
-                        <td class="min-width">
-                          <div class="input-style-1">
-                            <input type="text" maxlength="8" style="width: 12ex;" value="{{ a1_sensors[2] }}"
-                              name="A1S2" />
-                          </div>
-                        </td>
-                        <td class="min-width">
-                          <div class="input-style-1">
-                            <input type="text" maxlength="8" style="width: 12ex;" value="{{ a1_sensors[3] }}"
-                              name="A1S3" />
-                          </div>
-                        </td>
-                        <td class="min-width">
-                          <div class="input-style-1">
-                            <input type="text" maxlength="8" style="width: 12ex;" value="{{ a1_sensors[4] }}"
-                              name="A1S4" />
-                          </div>
-                        </td>
-                        <td class="min-width">
-                          <div class="input-style-1">
-                            <input type="text" maxlength="8" style="width: 12ex;" value="{{ a1_sensors[5] }}"
-                              name="A1S5" />
-                          </div>
-                        </td>
-                        <td class="min-width">
-                          <div class="input-style-1">
-                            <input type="text" maxlength="8" style="width: 12ex;" value="{{ a1_sensors[6] }}"
-                              name="A1S6" />
-                          </div>
-                        </td>
-                        <td class="min-width">
-                          <div class="input-style-1">
-                            <input type="text" maxlength="8" style="width: 12ex;" value="{{ a1_sensors[7] }}"
-                              name="A1S7" />
-                          </div>
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-                <h6 class="mb-25" data-i18n="[html]page2.valves"></h6>
-                <div class="table-wrapper table-responsive">
-                  <table class="table">
-                    <thead>
-                      <tr>
-                        <th>Valve 1</th>
-                        <th>Valve 2</th>
-                        <th>Valve 3</th>
-                        <th>Valve 4</th>
-                        <th>Valve 5</th>
-                        <th>Valve 6</th>
-                        <th>Valve 7</th>
-                        <th>Valve 8</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr>
-                        <td class="min-width">
-                          <div class="input-style-1">
-                            <input type="text" maxlength="8" style="width: 12ex;" value="{{ a1_valves[0] }}"
-                              name="A1V0" />
-                          </div>
-                        </td>
-                        <td class="min-width">
-                          <div class="input-style-1">
-                            <input type="text" maxlength="8" style="width: 12ex;" value="{{ a1_valves[1] }}"
-                              name="A1V1" />
-                          </div>
-                        </td>
-                        <td class="min-width">
-                          <div class="input-style-1">
-                            <input type="text" maxlength="8" style="width: 12ex;" value="{{ a1_valves[2] }}"
-                              name="A1V2" />
-                          </div>
-                        </td>
-                        <td class="min-width">
-                          <div class="input-style-1">
-                            <input type="text" maxlength="8" style="width: 12ex;" value="{{ a1_valves[3] }}"
-                              name="A1V3" />
-                          </div>
-                        </td>
-                        <td class="min-width">
-                          <div class="input-style-1">
-                            <input type="text" maxlength="8" style="width: 12ex;" value="{{ a1_valves[4] }}"
-                              name="A1V4" />
-                          </div>
-                        </td>
-                        <td class="min-width">
-                          <div class="input-style-1">
-                            <input type="text" maxlength="8" style="width: 12ex;" value="{{ a1_valves[5] }}"
-                              name="A1V5" />
-                          </div>
-                        </td>
-                        <td class="min-width">
-                          <div class="input-style-1">
-                            <input type="text" maxlength="8" style="width: 12ex;" value="{{ a1_valves[6] }}"
-                              name="A1V6" />
-                          </div>
-                        </td>
-                        <td class="min-width">
-                          <div class="input-style-1">
-                            <input type="text" maxlength="8" style="width: 12ex;" value="{{ a1_valves[7] }}"
-                              name="A1V7" />
-                          </div>
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-              </div><!-- end card -->
-              <div class="card-style mb-30">
-                <h5 class="mb-25" data-i18n="page2.A2pins"></h5>
-                <div class="select-style-1" style="width: 19ex;">
-                  <label for="A2M" class="uppercase" data-i18n="page2.arduino_model"></label>
-                  <div class="select-position">
-                    <select id="A2M" name="A2M">
-                      {% if len(a2_model) and a2_model[0] == 'MEGA' %}
-                      <option value="MEGA" selected>MEGA</option>
-                      <option value="UNO">UNO</option>
-                      {% else %}
-                      <option value="UNO" selected>UNO</option>
-                      <option value="MEGA">MEGA</option>
-                      {% end %}
-                    </select>
-                  </div>
-                </div>
-                <h6 class="mb-25" data-i18n="[html]page2.sensors"></h6>
-                <div class="table-wrapper table-responsive">
-                  <table class="table">
-                    <thead>
-                      <tr>
-                        <th>Sensor 1</th>
-                        <th>Sensor 2</th>
-                        <th>Sensor 3</th>
-                        <th>Sensor 4</th>
-                        <th>Sensor 5</th>
-                        <th>Sensor 6</th>
-                        <th>Sensor 7</th>
-                        <th>Sensor 8</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr>
-                        <td class="min-width">
-                          <div class="input-style-1">
-                            <input type="text" maxlength="8" style="width: 12ex;" value="{{ a2_sensors[0] }}"
-                              name="A2S0" />
-                          </div>
-                        </td>
-                        <td class="min-width">
-                          <div class="input-style-1">
-                            <input type="text" maxlength="8" style="width: 12ex;" value="{{ a2_sensors[1] }}"
-                              name="A2S1" />
-                          </div>
-                        </td>
-                        <td class="min-width">
-                          <div class="input-style-1">
-                            <input type="text" maxlength="8" style="width: 12ex;" value="{{ a2_sensors[2] }}"
-                              name="A2S2" />
-                          </div>
-                        </td>
-                        <td class="min-width">
-                          <div class="input-style-1">
-                            <input type="text" maxlength="8" style="width: 12ex;" value="{{ a2_sensors[3] }}"
-                              name="A2S3" />
-                          </div>
-                        </td>
-                        <td class="min-width">
-                          <div class="input-style-1">
-                            <input type="text" maxlength="8" style="width: 12ex;" value="{{ a2_sensors[4] }}"
-                              name="A2S4" />
-                          </div>
-                        </td>
-                        <td class="min-width">
-                          <div class="input-style-1">
-                            <input type="text" maxlength="8" style="width: 12ex;" value="{{ a2_sensors[5] }}"
-                              name="A2S5" />
-                          </div>
-                        </td>
-                        <td class="min-width">
-                          <div class="input-style-1">
-                            <input type="text" maxlength="8" style="width: 12ex;" value="{{ a2_sensors[6] }}"
-                              name="A2S6" />
-                          </div>
-                        </td>
-                        <td class="min-width">
-                          <div class="input-style-1">
-                            <input type="text" maxlength="8" style="width: 12ex;" value="{{ a2_sensors[7] }}"
-                              name="A2S7" />
-                          </div>
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
-                  <h6 class="mb-25" data-i18n="[html]page2.valves"></h6>
-                  <div class="table-wrapper table-responsive">
-                    <table class="table">
-                      <thead>
-                        <tr>
-                          <th>Valve 1</th>
-                          <th>Valve 2</th>
-                          <th>Valve 3</th>
-                          <th>Valve 4</th>
-                          <th>Valve 5</th>
-                          <th>Valve 6</th>
-                          <th>Valve 7</th>
-                          <th>Valve 8</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        <tr>
-                          <td class="min-width">
-                            <div class="input-style-1">
-                              <input type="text" maxlength="8" style="width: 12ex;" value="{{ a2_valves[0] }}"
-                                name="A2V0" />
-                            </div>
-                          </td>
-                          <td class="min-width">
-                            <div class="input-style-1">
-                              <input type="text" maxlength="8" style="width: 12ex;" value="{{ a2_valves[1] }}"
-                                name="A2V1" />
-                            </div>
-                          </td>
-                          <td class="min-width">
-                            <div class="input-style-1">
-                              <input type="text" maxlength="8" style="width: 12ex;" value="{{ a2_valves[2] }}"
-                                name="A2V2" />
-                            </div>
-                          </td>
-                          <td class="min-width">
-                            <div class="input-style-1">
-                              <input type="text" maxlength="8" style="width: 12ex;" value="{{ a2_valves[3] }}"
-                                name="A2V3" />
-                            </div>
-                          </td>
-                          <td class="min-width">
-                            <div class="input-style-1">
-                              <input type="text" maxlength="8" style="width: 12ex;" value="{{ a2_valves[4] }}"
-                                name="A2V4" />
-                            </div>
-                          </td>
-                          <td class="min-width">
-                            <div class="input-style-1">
-                              <input type="text" maxlength="8" style="width: 12ex;" value="{{ a2_valves[5] }}"
-                                name="A2V5" />
-                            </div>
-                          </td>
-                          <td class="min-width">
-                            <div class="input-style-1">
-                              <input type="text" maxlength="8" style="width: 12ex;" value="{{ a2_valves[6] }}"
-                                name="A2V6" />
-                            </div>
-                          </td>
-                          <td class="min-width">
-                            <div class="input-style-1">
-                              <input type="text" maxlength="8" style="width: 12ex;" value="{{ a2_valves[7] }}"
-                                name="A2V7" />
-                            </div>
-                          </td>
-                        </tr>
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              </div><!-- end card -->
-            </div><!-- end col -->
-          </div>
-          <div class="mb-3">
-            <div class="button-group d-flex justify-content-left flex-wrap">
-              <button id="experiment_config" type="submit" class="btn btn-primary" data-i18n="page2.button"></button>
-              &nbsp;&nbsp;<button id="page2_clear" type="button" class="btn btn-warning"
-                data-i18n="data.button"></button>
+            <h6 class="mb-25" data-i18n="[html]page2.sensors"></h6>
+            <div class="table-wrapper table-responsive">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th>Sensor 1</th>
+                    <th>Sensor 2</th>
+                    <th>Sensor 3</th>
+                    <th>Sensor 4</th>
+                    <th>Sensor 5</th>
+                    <th>Sensor 6</th>
+                    <th>Sensor 7</th>
+                    <th>Sensor 8</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="min-width">
+                      <div class="input-style-1">
+                        <input type="text" maxlength="8" style="width: 12ex;" value="{{ a1_sensors[0] }}" name="A1S0" />
+                      </div>
+                    </td>
+                    <td class="min-width">
+                      <div class="input-style-1">
+                        <input type="text" maxlength="8" style="width: 12ex;" value="{{ a1_sensors[1] }}" name="A1S1" />
+                      </div>
+                    </td>
+                    <td class="min-width">
+                      <div class="input-style-1">
+                        <input type="text" maxlength="8" style="width: 12ex;" value="{{ a1_sensors[2] }}" name="A1S2" />
+                      </div>
+                    </td>
+                    <td class="min-width">
+                      <div class="input-style-1">
+                        <input type="text" maxlength="8" style="width: 12ex;" value="{{ a1_sensors[3] }}" name="A1S3" />
+                      </div>
+                    </td>
+                    <td class="min-width">
+                      <div class="input-style-1">
+                        <input type="text" maxlength="8" style="width: 12ex;" value="{{ a1_sensors[4] }}" name="A1S4" />
+                      </div>
+                    </td>
+                    <td class="min-width">
+                      <div class="input-style-1">
+                        <input type="text" maxlength="8" style="width: 12ex;" value="{{ a1_sensors[5] }}" name="A1S5" />
+                      </div>
+                    </td>
+                    <td class="min-width">
+                      <div class="input-style-1">
+                        <input type="text" maxlength="8" style="width: 12ex;" value="{{ a1_sensors[6] }}" name="A1S6" />
+                      </div>
+                    </td>
+                    <td class="min-width">
+                      <div class="input-style-1">
+                        <input type="text" maxlength="8" style="width: 12ex;" value="{{ a1_sensors[7] }}" name="A1S7" />
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
-          </div>
-        </form>
+            <h6 class="mb-25" data-i18n="[html]page2.valves"></h6>
+            <div class="table-wrapper table-responsive">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th>Valve 1</th>
+                    <th>Valve 2</th>
+                    <th>Valve 3</th>
+                    <th>Valve 4</th>
+                    <th>Valve 5</th>
+                    <th>Valve 6</th>
+                    <th>Valve 7</th>
+                    <th>Valve 8</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="min-width">
+                      <div class="input-style-1">
+                        <input type="text" maxlength="8" style="width: 12ex;" value="{{ a1_valves[0] }}" name="A1V0" />
+                      </div>
+                    </td>
+                    <td class="min-width">
+                      <div class="input-style-1">
+                        <input type="text" maxlength="8" style="width: 12ex;" value="{{ a1_valves[1] }}" name="A1V1" />
+                      </div>
+                    </td>
+                    <td class="min-width">
+                      <div class="input-style-1">
+                        <input type="text" maxlength="8" style="width: 12ex;" value="{{ a1_valves[2] }}" name="A1V2" />
+                      </div>
+                    </td>
+                    <td class="min-width">
+                      <div class="input-style-1">
+                        <input type="text" maxlength="8" style="width: 12ex;" value="{{ a1_valves[3] }}" name="A1V3" />
+                      </div>
+                    </td>
+                    <td class="min-width">
+                      <div class="input-style-1">
+                        <input type="text" maxlength="8" style="width: 12ex;" value="{{ a1_valves[4] }}" name="A1V4" />
+                      </div>
+                    </td>
+                    <td class="min-width">
+                      <div class="input-style-1">
+                        <input type="text" maxlength="8" style="width: 12ex;" value="{{ a1_valves[5] }}" name="A1V5" />
+                      </div>
+                    </td>
+                    <td class="min-width">
+                      <div class="input-style-1">
+                        <input type="text" maxlength="8" style="width: 12ex;" value="{{ a1_valves[6] }}" name="A1V6" />
+                      </div>
+                    </td>
+                    <td class="min-width">
+                      <div class="input-style-1">
+                        <input type="text" maxlength="8" style="width: 12ex;" value="{{ a1_valves[7] }}" name="A1V7" />
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div><!-- end card -->
+          <div class="card-style mb-30">
+            <h5 class="mb-25" data-i18n="page2.A2pins"></h5>
+            <!-- begin checkbox -->
+            <div class="form-check checkbox-style mb-20">
+              {% if len(a2_onoff) and int(a2_onoff) == 1 %}
+              <input class="form-check-input" type="checkbox" value="1" id="A2onoff" name="A2onoff" checked />
+              {% else %}
+              <input class="form-check-input" type="checkbox" value="1" id="A2onoff" name="A2onoff" />
+              {% end %}
+              <label class="form-check-label" for="A2onoff" data-i18n="page2.onoff"></label>
+            </div>
+            <!-- end checkbox -->
+            <div class="select-style-1" style="width: 19ex;">
+              <label for="A2M" class="uppercase" data-i18n="page2.arduino_model"></label>
+              <div class="select-position">
+                <select id="A2M" name="A2M">
+                  {% if len(a2_model) and a2_model[0] == 'MEGA' %}
+                  <option value="MEGA" selected>MEGA</option>
+                  <option value="UNO">UNO</option>
+                  {% else %}
+                  <option value="UNO" selected>UNO</option>
+                  <option value="MEGA">MEGA</option>
+                  {% end %}
+                </select>
+              </div>
+            </div>
+            <h6 class="mb-25" data-i18n="[html]page2.sensors"></h6>
+            <div class="table-wrapper table-responsive">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th>Sensor 1</th>
+                    <th>Sensor 2</th>
+                    <th>Sensor 3</th>
+                    <th>Sensor 4</th>
+                    <th>Sensor 5</th>
+                    <th>Sensor 6</th>
+                    <th>Sensor 7</th>
+                    <th>Sensor 8</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="min-width">
+                      <div class="input-style-1">
+                        <input type="text" maxlength="8" style="width: 12ex;" value="{{ a2_sensors[0] }}" name="A2S0" />
+                      </div>
+                    </td>
+                    <td class="min-width">
+                      <div class="input-style-1">
+                        <input type="text" maxlength="8" style="width: 12ex;" value="{{ a2_sensors[1] }}" name="A2S1" />
+                      </div>
+                    </td>
+                    <td class="min-width">
+                      <div class="input-style-1">
+                        <input type="text" maxlength="8" style="width: 12ex;" value="{{ a2_sensors[2] }}" name="A2S2" />
+                      </div>
+                    </td>
+                    <td class="min-width">
+                      <div class="input-style-1">
+                        <input type="text" maxlength="8" style="width: 12ex;" value="{{ a2_sensors[3] }}" name="A2S3" />
+                      </div>
+                    </td>
+                    <td class="min-width">
+                      <div class="input-style-1">
+                        <input type="text" maxlength="8" style="width: 12ex;" value="{{ a2_sensors[4] }}" name="A2S4" />
+                      </div>
+                    </td>
+                    <td class="min-width">
+                      <div class="input-style-1">
+                        <input type="text" maxlength="8" style="width: 12ex;" value="{{ a2_sensors[5] }}" name="A2S5" />
+                      </div>
+                    </td>
+                    <td class="min-width">
+                      <div class="input-style-1">
+                        <input type="text" maxlength="8" style="width: 12ex;" value="{{ a2_sensors[6] }}" name="A2S6" />
+                      </div>
+                    </td>
+                    <td class="min-width">
+                      <div class="input-style-1">
+                        <input type="text" maxlength="8" style="width: 12ex;" value="{{ a2_sensors[7] }}" name="A2S7" />
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+
+              <h6 class="mb-25" data-i18n="[html]page2.valves"></h6>
+              <div class="table-wrapper table-responsive">
+                <table class="table">
+                  <thead>
+                    <tr>
+                      <th>Valve 1</th>
+                      <th>Valve 2</th>
+                      <th>Valve 3</th>
+                      <th>Valve 4</th>
+                      <th>Valve 5</th>
+                      <th>Valve 6</th>
+                      <th>Valve 7</th>
+                      <th>Valve 8</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td class="min-width">
+                        <div class="input-style-1">
+                          <input type="text" maxlength="8" style="width: 12ex;" value="{{ a2_valves[0] }}"
+                            name="A2V0" />
+                        </div>
+                      </td>
+                      <td class="min-width">
+                        <div class="input-style-1">
+                          <input type="text" maxlength="8" style="width: 12ex;" value="{{ a2_valves[1] }}"
+                            name="A2V1" />
+                        </div>
+                      </td>
+                      <td class="min-width">
+                        <div class="input-style-1">
+                          <input type="text" maxlength="8" style="width: 12ex;" value="{{ a2_valves[2] }}"
+                            name="A2V2" />
+                        </div>
+                      </td>
+                      <td class="min-width">
+                        <div class="input-style-1">
+                          <input type="text" maxlength="8" style="width: 12ex;" value="{{ a2_valves[3] }}"
+                            name="A2V3" />
+                        </div>
+                      </td>
+                      <td class="min-width">
+                        <div class="input-style-1">
+                          <input type="text" maxlength="8" style="width: 12ex;" value="{{ a2_valves[4] }}"
+                            name="A2V4" />
+                        </div>
+                      </td>
+                      <td class="min-width">
+                        <div class="input-style-1">
+                          <input type="text" maxlength="8" style="width: 12ex;" value="{{ a2_valves[5] }}"
+                            name="A2V5" />
+                        </div>
+                      </td>
+                      <td class="min-width">
+                        <div class="input-style-1">
+                          <input type="text" maxlength="8" style="width: 12ex;" value="{{ a2_valves[6] }}"
+                            name="A2V6" />
+                        </div>
+                      </td>
+                      <td class="min-width">
+                        <div class="input-style-1">
+                          <input type="text" maxlength="8" style="width: 12ex;" value="{{ a2_valves[7] }}"
+                            name="A2V7" />
+                        </div>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+
+              </div>
+            </div>
+          </div><!-- end card -->
+        </div><!-- end col -->
       </div>
-      <!-- end container -->
-    </section>
-    <!-- ========== main body end ========== -->
+      <div class="mb-3">
+        <div class="button-group d-flex justify-content-left flex-wrap">
+          <button id="experiment_config" type="submit" class="btn btn-primary" data-i18n="page2.button"></button>
+          &nbsp;&nbsp;<button id="page2_clear" type="button" class="btn btn-warning" data-i18n="data.button"></button>
+        </div>
+      </div>
+    </form>
+  </div>
+  <!-- end container -->
+</section>
+<!-- ========== main body end ========== -->
 {% end %}
 {% block modals %}
-  <!-- modals -->
-  <div id="modalContainer"></div>
-  <div class="modal fade" id="cmdModal" tabindex="-1" aria-labelledby="cmdModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title" id="cmdModalLabel">INFO</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-        </div>
-        <div class="modal-body" data-i18n="command.sent">
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-        </div>
+<!-- modals -->
+<div id="modalContainer"></div>
+<div class="modal fade" id="cmdModal" tabindex="-1" aria-labelledby="cmdModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="cmdModalLabel">INFO</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body" data-i18n="command.sent">
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
       </div>
     </div>
   </div>
-  <div class="modal fade" id="errModal" tabindex="-1" aria-labelledby="errModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title" id="errModalLabel">ERROR</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-        </div>
-        <div class="modal-body" data-i18n="command.error">
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-danger" data-bs-dismiss="modal">Close</button>
-        </div>
+</div>
+<div class="modal fade" id="errModal" tabindex="-1" aria-labelledby="errModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="errModalLabel">ERROR</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body" data-i18n="command.error">
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-danger" data-bs-dismiss="modal">Close</button>
       </div>
     </div>
   </div>
-  <div class="modal fade" id="okModal" tabindex="-1" aria-labelledby="okModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title" id="okModalLabel" data-i18n="page2.ok_msg_title"></h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-        </div>
-        <div class="modal-body" data-i18n="page2.ok_msg">
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-success" data-bs-dismiss="modal">Close</button>
-        </div>
+</div>
+<div class="modal fade" id="okModal" tabindex="-1" aria-labelledby="okModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="okModalLabel" data-i18n="page2.ok_msg_title"></h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body" data-i18n="page2.ok_msg">
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-success" data-bs-dismiss="modal">Close</button>
       </div>
     </div>
   </div>
-  <!-- end modals -->
+</div>
+<!-- end modals -->
 {% end %}
 
 {% block scripts %}

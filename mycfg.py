@@ -49,10 +49,12 @@ class MyConfig:
         self.config.set("arduino1", "model", "MEGA")
         self.config.set("arduino1", "sensors", ";;;;;;;")
         self.config.set("arduino1", "valves", ";;;;;;;")
+        self.config.set("arduino1", "invert_onoff", "0")
         self.config.add_section("arduino2")
         self.config.set("arduino2", "model", "MEGA")
         self.config.set("arduino2", "sensors", ";;;;;;;")
         self.config.set("arduino2", "valves", ";;;;;;;")
+        self.config.set("arduino2", "invert_onoff", "0")
         with open(self.cfg_file, "w", encoding='UTF-8') as config_file:
             try:
                 self.config.write(config_file)

@@ -88,13 +88,17 @@ class PageHandler(tornado.web.RequestHandler):
         params['a1_valves'] = str(cfg.get_setting(
             "arduino1", "valves")).split(";")
         params['a1_model'] = str(cfg.get_setting(
-            "arduino1", "model")).split(";")
+            "arduino1", "model"))
+        params['a1_onoff'] = str(cfg.get_setting(
+            "arduino1", "invert_onoff"))
         params['a2_sensors'] = str(cfg.get_setting(
             "arduino2", "sensors")).split(";")
         params['a2_valves'] = str(cfg.get_setting(
             "arduino2", "valves")).split(";")
         params['a2_model'] = str(cfg.get_setting(
-            "arduino2", "model")).split(";")
+            "arduino2", "model"))
+        params['a2_onoff'] = str(cfg.get_setting(
+            "arduino2", "invert_onoff"))
         # finally render the page with the parameters
         self.render(f'page{id}.html', **params)
 
@@ -127,7 +131,7 @@ class AjaxHandler(tornado.web.RequestHandler):
 
 class FormHandler(tornado.web.RequestHandler):
 
-    _thread_pool = tornado.concurrent.futures.ThreadPoolExecutor(max_workers=1)
+    _thread_pool = tornado.concurrent.futures.ThreadPoolExecutor(max_workers=2)
 
     def post(self):
         # every form most have a unique page_id
@@ -145,6 +149,7 @@ class FormHandler(tornado.web.RequestHandler):
             elif page_id == 2:
                 self.arduino_config()
         except Exception as exp:
+            print(str(exp))
             self.redirect(f'page?id={page_id}&status=2')
             return
 
@@ -164,6 +169,14 @@ class FormHandler(tornado.web.RequestHandler):
         a2_valves_lst = []
         a1_model = str(self.get_body_arguments("A1M")[0])
         a2_model = str(self.get_body_arguments("A2M")[0])
+        try:
+            a1_onoff = str(self.get_body_arguments("A1onoff")[0])
+        except:
+            a1_onoff = '0'
+        try:
+            a2_onoff = str(self.get_body_arguments("A2onoff")[0])
+        except:
+            a2_onoff = '0'
         for idx in range(8):
             a1_sensors_lst.append(
                 str(self.get_body_arguments(f"A1S{idx}")[0]))
@@ -175,6 +188,8 @@ class FormHandler(tornado.web.RequestHandler):
                 str(self.get_body_arguments(f"A2V{idx}")[0]))
         config['arduino1']['model'] = a1_model
         config['arduino2']['model'] = a2_model
+        config['arduino1']['invert_onoff'] = a1_onoff
+        config['arduino2']['invert_onoff'] = a2_onoff
         config['arduino1']['sensors'] = ";".join(
             a1_sensors_lst).replace(' ', '')
         config['arduino1']['valves'] = ";".join(a1_valves_lst).replace(' ', '')
@@ -196,6 +211,13 @@ class FormHandler(tornado.web.RequestHandler):
         config['experiment']['sensors_duration'] = sensors_duration
         with open(cfg.cfg_file, 'w', encoding='UTF-8') as configfile:
             config.write(configfile)
+
+    @tornado.concurrent.run_on_executor(executor='_thread_pool')
+    def update_output_dir(self):
+        """Update the output directory generating correspoding 'index.html' files"""
+        parser = indexer.add_args()
+        args = parser.parse_args([BASE_EXP_DIR, '--recursive'])
+        indexer.process_dir(args.top_dir, args)
 
     @tornado.concurrent.run_on_executor(executor='_thread_pool')
     def start_experiment(self):
@@ -294,10 +316,8 @@ class FormHandler(tornado.web.RequestHandler):
                                     include_plotlyjs='cdn',
                                     filename=fn+'.html')
 
-        # update experiment directory index pages
-        parser = indexer.add_args()
-        args = parser.parse_args([BASE_EXP_DIR, '--recursive'])
-        indexer.process_dir(args.top_dir, args)
+        # finally update index files with new contents
+        self.update_output_dir()
 
 
 def create_output_dir(topdir=None, subdirs=None):
@@ -332,6 +352,11 @@ def create_output_dir(topdir=None, subdirs=None):
     return output_dir
 
 
+def autoreload_wait(secs=5):
+    '''sleep for a given number of seconds'''
+    time.sleep(secs)
+
+
 if __name__ == '__main__':
     # find out this script's directory
     SCRIPT_DIR = os.path.abspath(os.path.dirname(sys.argv[0]))
@@ -344,12 +369,6 @@ if __name__ == '__main__':
     cfg = mycfg.MyConfig(CFGFN)
     ser_params, web_params = cfg.read_config()
 
-    # start the serial worker in background (as a deamon)
-    # sp = serialworker.SerialProcess(
-    #    input_queue, output_queue, serial_port, baud_rate, timeout)
-    #sp.daemon = True
-    # sp.start()
-
     # tornado setup
     handlers = [
         (r"/", IndexHandler),
@@ -358,7 +377,7 @@ if __name__ == '__main__':
         (r"/ajax", AjaxHandler),
         (r"/static/(.*)", tornado.web.StaticFileHandler,
          {'path': './static'}),
-        (r"/{}/(.*)".format(BASE_EXP_DIR), tornado.web.StaticFileHandler,
+        (fr"/{BASE_EXP_DIR}/(.*)", tornado.web.StaticFileHandler,
          {'path': f'./{BASE_EXP_DIR}', "default_filename": "index.html"}),
     ]
     settings = dict(
@@ -375,11 +394,18 @@ if __name__ == '__main__':
     print("Web server listening on http://{web_ip}:{web_port}".format(
         **web_params))
 
+    # auto reload tornado server after file changed
+    watched_file = os.path.abspath(os.path.join(BASE_EXP_DIR, 'index.html'))
+    # enable tornado autoreload
     tornado.autoreload.start()
-    tornado.autoreload.watch(os.path.join(BASE_EXP_DIR, 'index.html'))
+    # add watched file to tornado autoreload feature
+    tornado.autoreload.watch(watched_file)
+    # wait a little bit before reloading tornado server
+    tornado.autoreload.add_reload_hook(autoreload_wait)
+    # tornado main loop
     main_loop = tornado.ioloop.IOLoop().current()
 
-    # tornado main loop
+    # start tornado main loop
     try:
         main_loop.start()
     except Exception as exp:

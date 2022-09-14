@@ -118,6 +118,7 @@ $(function () {
               ok_msg_title: 'Sucess',
               err_msg: 'Could not configure arduinos!',
               arduino_model: 'Arduino Model',
+              onoff: 'Invert ON/OFF relay logic',
             },
             page3: {
               title: 'Use this page to send commands to and receive data from the TH2816B LCR Meter',
@@ -224,6 +225,7 @@ $(function () {
               ok_msg_title: 'Sucesso',
               err_msg: 'Não foi possível configurar o arduino!',
               arduino_model: 'Modelo do Arduino',
+              onoff: 'Inverter lógica ON/OFF do relay',
             },
             page3: {
               title: 'Use esta página para enviar comandos e visualizar os dados capturados pelo medidor LCR TH2816B',

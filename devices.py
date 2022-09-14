@@ -35,14 +35,11 @@ __maintainer__ = "Bernhard Enders"
 __email__ = "b g e n e t o @ g m a i l d o t c o m"
 __copyright__ = "Copyright 2022, Bernhard Enders"
 __license__ = "GPL"
-__version__ = "0.1.12"
+__version__ = "0.1.13"
 __date__ = "20220914"
 __status__ = "Development"
 
 # global constants
-ON = 1
-OFF = 2
-
 global_counter = 0
 cprint = ColorPrint(__name__ + '.log')
 
@@ -51,8 +48,6 @@ class Board(Enum):
     '''arduino boards digital pins config'''
     UNO = 14  # number of digital pins
     MEGA = 54  # number of digital pins
-    ON = 1    # digital pin on
-    OFF = 0   # digital pin off
 
 
 class ArduinoConnection:
@@ -67,6 +62,8 @@ class ArduinoConnection:
         self.name = name
         self.model = model
         self.id = id
+        self.ON = 2
+        self.OFF = 1
         self.valves_pins = []
         self.sensors_pins = []
         self.connection_attempt()
@@ -102,11 +99,11 @@ class ArduinoConnection:
         '''switch all pins off'''
         for pins in self.valves_pins:
             for pin in pins:
-                self.ser.digital_write(pin, OFF)
+                self.ser.digital_write(pin, self.OFF)
                 time.sleep(0.1)
         for pins in self.sensors_pins:
             for pin in pins:
-                self.ser.digital_write(pin, OFF)
+                self.ser.digital_write(pin, self.OFF)
                 time.sleep(0.1)
 
     def _analog_to_digital(self, num) -> int:
@@ -163,10 +160,15 @@ class ArduinoConnection:
             for pin in pins:
                 self.ser.set_pin_mode_digital_output(pin)
                 # turn off all pins at initialization
-                self.ser.digital_write(pin, OFF)
+                self.ser.digital_write(pin, self.OFF)
                 time.sleep(0.1)  # lets be cautious and wait a little bit
 
         return proper_pins
+
+    def invert_onoff(self):
+        '''invert ON and OFF logic for arduinos relay'''
+        cprint.warn('inverting ON and OFF relay logic')
+        self.ON, self.OFF = self.OFF, self.ON
 
     def configure_pins(self, valves_pins=None, sensors_pins=None):
         '''set proper pin number and configure required pins as digital output'''
@@ -188,11 +190,11 @@ class ArduinoConnection:
             if idx in pins_pos:
                 for pin in pins:
                     cprint.info(f"Turning ON pin {pin}")
-                    self.ser.digital_write(pin, ON)
+                    self.ser.digital_write(pin, self.ON)
             else:
                 for pin in pins:
                     #cprint.info(f"Turning OFF pin {pin}")
-                    self.ser.digital_write(pin, OFF)
+                    self.ser.digital_write(pin, self.OFF)
         # global wait (if requested)
         time.sleep(wait)
 
@@ -216,7 +218,7 @@ class ArduinoConnection:
                 self.switch_onoff(self.sensors_pins, [spos])
                 # wait for the sensor to settle before taking a reading
                 time.sleep(0.5)
-                percent = round(50.0*global_counter/(nsensors*sloop*vloop))
+                percent = round(100.0*global_counter/(nsensors*sloop*vloop))
                 cprint.normal(f'Measuring... {percent}% completed')
                 # now we empty the input buffer list
                 lcr_meter.transport.serial.flush()
@@ -372,6 +374,8 @@ def shutdown(lcr_meter, arduinos):
 
 def run_experiment(lcr_meter, arduinos, vloop, sloop, stime):
     '''run the experiment'''
+    global global_counter
+    global_counter = 0
 
     # wait before starting a measurement
     time.sleep(1)
@@ -424,14 +428,16 @@ def arduinos_connect(cfg) -> Dict[str, ArduinoConnection]:
     '''connect to arduinos'''
     boards = {}
     # check if arduino2 is present/configured
-    device_model = str(cfg.get_setting("arduino2", "model"))
+    device = "arduino2"
+    device_model = str(cfg.get_setting(device, "model"))
     device_board = Board.MEGA if device_model == 'MEGA' else Board.UNO
-    device_sensors = str(cfg.get_setting("arduino2", "sensors")).split(';')
-    device_valves = str(cfg.get_setting("arduino2", "valves")).split(';')
+    device_sensors = str(cfg.get_setting(device, "sensors")).split(';')
+    device_valves = str(cfg.get_setting(device, "valves")).split(';')
     empty_sensors = all(len(elem) == 0 for elem in device_sensors)
     empty_valves = all(len(elem) == 0 for elem in device_valves)
 
-    if empty_sensors and empty_valves:  # one arduino only
+    # one arduino only, but not the choosen previously
+    if empty_sensors and empty_valves:
         device = 'arduino1'
         device_model = str(cfg.get_setting(device, "model"))
         device_board = Board.MEGA if device_model == 'MEGA' else Board.UNO
@@ -444,40 +450,57 @@ def arduinos_connect(cfg) -> Dict[str, ArduinoConnection]:
             'valves & sensors', device_board, id=1)
         boards['all'].configure_pins(
             valves_pins=valves, sensors_pins=sensors)
+        # check for inverted ON/OFF logic in arduino config
+        invert_onoff = int(cfg.get_setting(device, "invert_onoff"))
+        if invert_onoff == 1:
+            boards['all'].invert_onoff()
     else:  # two arduinos
         if empty_sensors:  # find out which arduino is the sensors one
             boards['valves'] = ArduinoConnection(
                 'valves', device_board, id=2)
             # get other arduino configuration
-            other_device_model = str(cfg.get_setting("arduino1", "model"))
+            other_device = "arduino1"
+            other_device_model = str(cfg.get_setting(other_device, "model"))
             other_device_board = Board.MEGA if other_device_model == 'MEGA' else Board.UNO
             boards['sensors'] = ArduinoConnection(
                 'sensors', other_device_board, id=1)
             device_sensors = str(cfg.get_setting(
-                "arduino1", "sensors")).split(';')
+                other_device, "sensors")).split(';')
             device_valves = str(cfg.get_setting(
-                "arduino2", "valves")).split(';')
+                device, "valves")).split(';')
             sensors = [val.split(',')
                        for val in device_sensors if len(val) > 0]
             valves = [val.split(',') for val in device_valves if len(val) > 0]
             boards['valves'].configure_pins(valves_pins=valves)
             boards['sensors'].configure_pins(sensors_pins=sensors)
+            invert_onoff = int(cfg.get_setting(device, "invert_onoff"))
+            if invert_onoff == 1:
+                boards['valves'].invert_onoff()
+            invert_onoff = int(cfg.get_setting(other_device, "invert_onoff"))
+            if invert_onoff == 1:
+                boards['sensors'].invert_onoff()
         elif empty_valves:
             boards['sensors'] = ArduinoConnection(
                 'sensors', device_board, id=2)
             # get other arduino configuration
-            other_device_model = str(cfg.get_setting("arduino1", "model"))
+            other_device = 'arduino1'
+            other_device_model = str(cfg.get_setting(other_device, "model"))
             other_device_board = Board.MEGA if other_device_model == 'MEGA' else Board.UNO
             boards['valves'] = ArduinoConnection(
                 'valves', other_device_board, id=1)
             device_valves = str(cfg.get_setting(
-                "arduino1", "valves")).split(';')
+                other_device, "valves")).split(';')
             device_sensors = str(cfg.get_setting(
-                "arduino2", "sensors")).split(';')
+                device, "sensors")).split(';')
             valves = [val.split(',') for val in device_valves if len(val) > 0]
             sensors = [val.split(',')
                        for val in device_sensors if len(val) > 0]
             boards['sensors'].configure_pins(sensors_pins=sensors)
             boards['valves'].configure_pins(valves_pins=valves)
-
+            invert_onoff = int(cfg.get_setting(device, "invert_onoff"))
+            if invert_onoff == 1:
+                boards['sensors'].invert_onoff()
+            invert_onoff = int(cfg.get_setting(other_device, "invert_onoff"))
+            if invert_onoff == 1:
+                boards['valves'].invert_onoff()
     return boards
