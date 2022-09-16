@@ -273,7 +273,8 @@ def process_dir(top_dir, opts):
     sorted_entries = sorted(path_top_dir.glob(
         glob_patt), key=lambda p: (p.is_file(), p.name))
 
-    # script tag
+    # desc script tag
+    desc = ''
     script_tag = ''
 
     entry: Path
@@ -286,6 +287,7 @@ def process_dir(top_dir, opts):
         if 'desc.txt' in entry.name.lower():
             with open(entry, 'r', encoding="UTF-8") as f:
                 desc = f.read()
+
             script_tag = """
 <script>
     document.addEventListener("DOMContentLoaded", function(event) {

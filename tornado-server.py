@@ -24,7 +24,6 @@ Author:   b g e n e t o @ g m a i l . c o m
 """
 
 import json
-import multiprocessing
 import os
 import sys
 from datetime import date
@@ -50,8 +49,8 @@ __email__ = "b g e n e t o @ g m a i l d o t c o m"
 __copyright__ = "Copyright 2022, Bernhard Enders"
 __license__ = "GPL"
 __status__ = "Development"
-__version__ = "0.1.8"
-__date__ = "20220914"
+__version__ = "1.0.1"
+__date__ = "20220916"
 __year__ = date.today().year
 
 # global variables
@@ -147,9 +146,8 @@ class FormHandler(tornado.web.RequestHandler):
             if page_id == 0:
                 form_action = str(self.get_body_arguments("form_action")[0])
                 if form_action == "cancel":
-                    # stop tornado server
                     status = 3
-                    # change reload watched file
+                    # change watched file to force tornado reload
                     try:
                         with open('reload', 'w') as f:
                             f.write(
@@ -164,7 +162,7 @@ class FormHandler(tornado.web.RequestHandler):
             elif page_id == 2:
                 self.arduino_config()
         except Exception as exp:
-            print(str(exp))
+            print(traceback.format_exc())
             self.redirect(f'page?id={page_id}&status=2')
             return
 
@@ -182,8 +180,8 @@ class FormHandler(tornado.web.RequestHandler):
         a1_valves_lst = []
         a2_sensors_lst = []
         a2_valves_lst = []
-        a1_model = str(self.get_body_arguments("A1M")[0])
-        a2_model = str(self.get_body_arguments("A2M")[0])
+        a1_model = str(self.get_body_arguments("A1M")[0]).strip()
+        a2_model = str(self.get_body_arguments("A2M")[0]).strip()
         try:
             a1_onoff = str(self.get_body_arguments("A1onoff")[0])
         except:
@@ -241,12 +239,17 @@ class FormHandler(tornado.web.RequestHandler):
             for sensor in data[0][valve].keys():
                 for param in ['primary', 'secondary']:
                     cname = f'{valve}.{sensor}.{param}'
-                    df_tmp = data_df[cname].explode(cname)
-                    fn = os.path.join(output_dir, param, f'{valve}-{sensor}')
+                    pseries = data_df[cname].explode(cname)
+                    # rename series
+                    vnum = int(valve[1:]) + 1
+                    snum = int(sensor[1:]) + 1
+                    pseries.rename(f'V{vnum}.S{snum}', inplace=True)
+                    fn = os.path.join(output_dir, param,
+                                      f'V{vnum}-S{snum}')
                     # write to csv file
-                    df_tmp.to_csv(fn+'.csv')
+                    pseries.to_csv(fn+'.csv')
                     # produce plots
-                    fig = px.scatter(df_tmp)
+                    fig = px.scatter(pseries)
                     fig.update_traces(mode='lines+markers')
                     plotly.offline.plot(fig,
                                         include_plotlyjs='cdn',
@@ -255,6 +258,40 @@ class FormHandler(tornado.web.RequestHandler):
     def write_all_sensors(self, data, output_dir):
         # convert data to dataframe
         data_df = pd.json_normalize(data)
+        # new column names
+        cols = {"V0.S0.primary": "V1.S1",
+                "V0.S1.primary": "V1.S2",
+                "V0.S2.primary": "V1.S3",
+                "V0.S3.primary": "V1.S4",
+                "V0.S4.primary": "V1.S5",
+                "V0.S5.primary": "V1.S6",
+                "V0.S6.primary": "V1.S7",
+                "V0.S7.primary": "V1.S8",
+                "V0.S0.secondary": "V1.S1",
+                "V0.S1.secondary": "V1.S2",
+                "V0.S2.secondary": "V1.S3",
+                "V0.S3.secondary": "V1.S4",
+                "V0.S4.secondary": "V1.S5",
+                "V0.S5.secondary": "V1.S6",
+                "V0.S6.secondary": "V1.S7",
+                "V0.S7.secondary": "V1.S8",
+                "V1.S0.primary": "V2.S1",
+                "V1.S1.primary": "V2.S2",
+                "V1.S2.primary": "V2.S3",
+                "V1.S3.primary": "V2.S4",
+                "V1.S4.primary": "V2.S5",
+                "V1.S5.primary": "V2.S6",
+                "V1.S6.primary": "V2.S7",
+                "V1.S7.primary": "V2.S8",
+                "V1.S0.secondary": "V2.S1",
+                "V1.S1.secondary": "V2.S2",
+                "V1.S2.secondary": "V2.S3",
+                "V1.S3.secondary": "V2.S4",
+                "V1.S4.secondary": "V2.S5",
+                "V1.S5.secondary": "V2.S6",
+                "V1.S6.secondary": "V2.S7",
+                "V1.S7.secondary": "V2.S8",
+                }
         # write all sensors to csv file
         for valve in data[0].keys():
             for param in ['primary', 'secondary']:
@@ -268,7 +305,9 @@ class FormHandler(tornado.web.RequestHandler):
                         valve_df.loc[idx, col] = valve_df[col][idx][0:min_rows]
                 valve_df = valve_df.explode(
                     list(valve_df.columns), ignore_index=True)
-                fn = os.path.join(output_dir, param, f'{valve}')
+                valve_df.rename(columns=cols, inplace=True)
+                vnum = int(valve[1:]) + 1
+                fn = os.path.join(output_dir, param, f'V{vnum}')
                 # write to csv file
                 valve_df.to_csv(fn+'.csv')
                 # produce plots
@@ -280,6 +319,8 @@ class FormHandler(tornado.web.RequestHandler):
 
     @tornado.concurrent.run_on_executor(executor='_thread_pool')
     def start_experiment(self):
+        global lcr
+        global arduinos
         '''start a new experiment'''
         # ensures that this variable is accessible in the other thread
         cfg = mycfg.MyConfig(CFGFN)
@@ -377,6 +418,7 @@ def create_output_dir(topdir=None, subdirs=None):
 
 def autoreload_wait(secs=3):
     '''sleep for a given number of seconds'''
+    shutdown(lcr, arduinos)
     time.sleep(secs)
 
 
@@ -391,6 +433,10 @@ if __name__ == '__main__':
 
     cfg = mycfg.MyConfig(CFGFN)
     ser_params, web_params = cfg.read_config()
+
+    # global devices variables
+    lcr = None
+    arduinos = []
 
     # tornado setup
     handlers = [
@@ -438,5 +484,6 @@ if __name__ == '__main__':
     except Exception as exp:
         pass
     finally:
+        shutdown(lcr, arduinos)
         http_server.stop()
         print('\nWeb server stopped!')

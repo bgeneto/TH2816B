@@ -44,7 +44,7 @@
               <label for="A1M" class="uppercase" data-i18n="page2.arduino_model"></label>
               <div class="select-position">
                 <select id="A1M" name="A1M">
-                  {% if len(a1_model) and a1_model[0] == 'MEGA' %}
+                  {% if (len(a1_model) > 0) and (a1_model == 'MEGA') %}
                   <option value="MEGA" selected>MEGA</option>
                   <option value="UNO">UNO</option>
                   {% else %}
@@ -193,7 +193,7 @@
               <label for="A2M" class="uppercase" data-i18n="page2.arduino_model"></label>
               <div class="select-position">
                 <select id="A2M" name="A2M">
-                  {% if len(a2_model) and a2_model[0] == 'MEGA' %}
+                  {% if (len(a2_model) > 0) and (a2_model == 'MEGA') %}
                   <option value="MEGA" selected>MEGA</option>
                   <option value="UNO">UNO</option>
                   {% else %}

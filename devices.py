@@ -36,8 +36,8 @@ __maintainer__ = "Bernhard Enders"
 __email__ = "b g e n e t o @ g m a i l d o t c o m"
 __copyright__ = "Copyright 2022, Bernhard Enders"
 __license__ = "GPL"
-__version__ = "0.1.14"
-__date__ = "20220915"
+__version__ = "1.0.1"
+__date__ = "20220916"
 __status__ = "Development"
 
 # global constants
@@ -365,10 +365,11 @@ def shutdown(lcr_meter, arduinos):
             time.sleep(0.1)
             arduino.ser.shutdown()
             cprint.warn(f'Arduino {arduino.name} shutdown')
-        now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        now = datetime.now().strftime("%Y-%m-%d %H:%M")
         cprint.bold(f'..:: Experiment ended at {now} ::..')
     except Exception as exc:
-        traceback.print_exc(exc)
+        #print(traceback.format_exc())
+        pass
 
 
 def run_experiment(lcr_meter, arduinos, vloop, sloop, stime):
@@ -379,7 +380,7 @@ def run_experiment(lcr_meter, arduinos, vloop, sloop, stime):
     # wait before starting a measurement
     time.sleep(1)
 
-    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    now = datetime.now().strftime("%Y-%m-%d %H:%M")
     cprint.bold(f'..:: Experiment started at {now}  ::..')
 
     # find out number of arduinos configured
