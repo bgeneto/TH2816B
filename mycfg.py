@@ -88,6 +88,8 @@ class MyConfig:
             value = self.config.get(section, setting)
         except Exception as exp:
             print(str(exp))
+            # auto (re)create config file in the next run
+            self.ini_config()
             os._exit(os.EX_CONFIG)
 
         return value

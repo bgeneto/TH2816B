@@ -6,10 +6,13 @@ $(document).ready(function () {
     let param = searchParams.get('status');
     if (param == 1) {
       $('#okModal').modal('show');
-    } else {
+    } else if (param == 2) {
       $('#errModal').modal('show');
+    } else if (param == 3) {
+      $('#msgModal').modal('show');
     }
   }
+
   /* ========= sidebar toggle ======== */
   const sidebarNavWrapper = document.querySelector(".sidebar-nav-wrapper");
   const mainWrapper = document.querySelector(".main-wrapper");

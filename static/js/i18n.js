@@ -73,6 +73,8 @@ $(function () {
               ok_msg: 'Experiment started successfully!',
               log: 'Waiting for an experiment...',
               username: 'Username',
+              exp_end: 'Stop',
+              modal_msg: 'Experiment stopped successfully!',
             },
             page1: {
               title: 'Experiment Configuration',
@@ -181,6 +183,8 @@ $(function () {
               ok_msg: 'Experimento iniciado com sucesso!',
               log: 'Aguardando novo experimento...',
               username: 'Nome do usuário',
+              exp_end: 'Parar',
+              modal_msg: 'Experimento encerrado com sucesso!',
             },
             page1: {
               title: 'Configuração do Experimento',

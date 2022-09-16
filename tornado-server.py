@@ -131,19 +131,34 @@ class AjaxHandler(tornado.web.RequestHandler):
 
 class FormHandler(tornado.web.RequestHandler):
 
-    _thread_pool = tornado.concurrent.futures.ThreadPoolExecutor(max_workers=2)
+    _thread_pool = tornado.concurrent.futures.ThreadPoolExecutor(max_workers=1)
 
     def post(self):
         # every form most have a unique page_id
+        status = 1
+        form_action = "ok"
         try:
             page_id = int(self.get_body_arguments("page_id")[0])
-        except:
+        except Exception as exp:
             self.redirect(f'page?id=0&status=unknown')
             return
         # treat each form differently
         try:
             if page_id == 0:
-                self.start_experiment()
+                form_action = str(self.get_body_arguments("form_action")[0])
+                if form_action == "cancel":
+                    # stop tornado server
+                    status = 3
+                    # change reload watched file
+                    try:
+                        with open('reload', 'w') as f:
+                            f.write(
+                                'Change this file in order to force a tornado reload!')
+                    except:
+                        pass
+                else:
+                    # start a new experiment
+                    self.start_experiment()
             elif page_id == 1:
                 self.experiment_config()
             elif page_id == 2:
@@ -153,7 +168,7 @@ class FormHandler(tornado.web.RequestHandler):
             self.redirect(f'page?id={page_id}&status=2')
             return
 
-        self.redirect(f'page?id={page_id}&status=1')
+        self.redirect(f'page?id={page_id}&status={status}')
         return
 
     get = post
@@ -212,12 +227,56 @@ class FormHandler(tornado.web.RequestHandler):
         with open(cfg.cfg_file, 'w', encoding='UTF-8') as configfile:
             config.write(configfile)
 
-    @tornado.concurrent.run_on_executor(executor='_thread_pool')
     def update_output_dir(self):
         """Update the output directory generating correspoding 'index.html' files"""
         parser = indexer.add_args()
         args = parser.parse_args([BASE_EXP_DIR, '--recursive'])
         indexer.process_dir(args.top_dir, args)
+
+    def write_each_sensor(self, data, output_dir):
+        # convert data to dataframe
+        data_df = pd.json_normalize(data)
+        # write individual csv files for each sensor
+        for valve in data[0].keys():
+            for sensor in data[0][valve].keys():
+                for param in ['primary', 'secondary']:
+                    cname = f'{valve}.{sensor}.{param}'
+                    df_tmp = data_df[cname].explode(cname)
+                    fn = os.path.join(output_dir, param, f'{valve}-{sensor}')
+                    # write to csv file
+                    df_tmp.to_csv(fn+'.csv')
+                    # produce plots
+                    fig = px.scatter(df_tmp)
+                    fig.update_traces(mode='lines+markers')
+                    plotly.offline.plot(fig,
+                                        include_plotlyjs='cdn',
+                                        filename=fn+'.html')
+
+    def write_all_sensors(self, data, output_dir):
+        # convert data to dataframe
+        data_df = pd.json_normalize(data)
+        # write all sensors to csv file
+        for valve in data[0].keys():
+            for param in ['primary', 'secondary']:
+                valve_df = data_df.filter(regex=f'{valve}.*{param}').copy()
+                min_rows = sys.maxsize
+                for col in valve_df.columns:
+                    rows = valve_df[col].map(len).min()
+                    min_rows = rows if rows < min_rows else min_rows
+                for idx in valve_df.index:
+                    for col in valve_df.columns:
+                        valve_df.loc[idx, col] = valve_df[col][idx][0:min_rows]
+                valve_df = valve_df.explode(
+                    list(valve_df.columns), ignore_index=True)
+                fn = os.path.join(output_dir, param, f'{valve}')
+                # write to csv file
+                valve_df.to_csv(fn+'.csv')
+                # produce plots
+                fig = px.scatter(valve_df)
+                fig.update_traces(mode='lines+markers')
+                plotly.offline.plot(fig,
+                                    include_plotlyjs='cdn',
+                                    filename=fn+'.html')
 
     @tornado.concurrent.run_on_executor(executor='_thread_pool')
     def start_experiment(self):
@@ -274,47 +333,11 @@ class FormHandler(tornado.web.RequestHandler):
         with open(os.path.join(output_dir, 'results.json'), 'w', encoding='ISO-8859-1') as outfile:
             json.dump(data, outfile, indent=2, ensure_ascii=True)
 
-        # convert dara to dataframe
-        data_df = pd.json_normalize(data)
+        # save each sensor data to a separate csv file
+        self.write_each_sensor(data, output_dir)
 
-        # write individual csv files for each sensor
-        for valve in data[0].keys():
-            for sensor in data[0][valve].keys():
-                for param in ['primary', 'secondary']:
-                    cname = f'{valve}.{sensor}.{param}'
-                    df_tmp = data_df[cname].explode(cname)
-                    fn = os.path.join(output_dir, param, f'{valve}-{sensor}')
-                    # write to csv file
-                    df_tmp.to_csv(fn+'.csv')
-                    # produce plots
-                    fig = px.scatter(df_tmp)
-                    fig.update_traces(mode='lines+markers')
-                    plotly.offline.plot(fig,
-                                        include_plotlyjs='cdn',
-                                        filename=fn+'.html')
-
-        # write all sensors to csv file
-        for valve in data[0].keys():
-            for param in ['primary', 'secondary']:
-                valve_df = data_df.filter(regex=f'{valve}.*{param}').copy()
-                min_rows = sys.maxsize
-                for col in valve_df.columns:
-                    rows = valve_df[col].map(len).min()
-                    min_rows = rows if rows < min_rows else min_rows
-                for idx in valve_df.index:
-                    for col in valve_df.columns:
-                        valve_df.loc[idx, col] = valve_df[col][idx][0:min_rows]
-                valve_df = valve_df.explode(
-                    list(valve_df.columns), ignore_index=True)
-                fn = os.path.join(output_dir, param, f'{valve}')
-                # write to csv file
-                valve_df.to_csv(fn+'.csv')
-                # produce plots
-                fig = px.scatter(valve_df)
-                fig.update_traces(mode='lines+markers')
-                plotly.offline.plot(fig,
-                                    include_plotlyjs='cdn',
-                                    filename=fn+'.html')
+        # save all sensor data to a single csv file
+        self.write_all_sensors(data, output_dir)
 
         # finally update index files with new contents
         self.update_output_dir()
@@ -352,7 +375,7 @@ def create_output_dir(topdir=None, subdirs=None):
     return output_dir
 
 
-def autoreload_wait(secs=5):
+def autoreload_wait(secs=3):
     '''sleep for a given number of seconds'''
     time.sleep(secs)
 
@@ -394,14 +417,18 @@ if __name__ == '__main__':
     print("Web server listening on http://{web_ip}:{web_port}".format(
         **web_params))
 
-    # auto reload tornado server after file changed
-    watched_file = os.path.abspath(os.path.join(BASE_EXP_DIR, 'index.html'))
-    # enable tornado autoreload
-    tornado.autoreload.start()
-    # add watched file to tornado autoreload feature
-    tornado.autoreload.watch(watched_file)
-    # wait a little bit before reloading tornado server
-    tornado.autoreload.add_reload_hook(autoreload_wait)
+    if settings['autoreload']:
+        # auto reload tornado server after file changed
+        watched_files = (os.path.abspath(os.path.join(BASE_EXP_DIR, 'index.html')),
+                         os.path.abspath('reload'),)
+        # enable tornado autoreload
+        tornado.autoreload.start()
+        # add watched file to tornado autoreload feature
+        for watched_file in watched_files:
+            tornado.autoreload.watch(watched_file)
+        # wait a little bit before reloading tornado server
+        tornado.autoreload.add_reload_hook(autoreload_wait)
+
     # tornado main loop
     main_loop = tornado.ioloop.IOLoop().current()
 

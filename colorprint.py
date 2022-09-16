@@ -16,18 +16,56 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+
+__doc__ = """
+Write message to standard output (stdout) or standard error (stderr).
+
+Message is outputted in color according to the message flavor/method requested.
+Can also write to a file in html format.
+
+Classes:
+
+    ColorPrint
+
+Functions:
+
+    fail(message, end)
+    error(message, end)
+    warn(message, end)
+    info(message, end)
+    success(message, end)
+    bold(message, end)
+    norm(message, end)
+    light(message, end)
+
+Misc variables:
+
+    __version__
+    __author__
+"""
+
 import os
 import sys
+
+__author__ = "bgeneto"
+__copyright__ = "Copyright 2022, bgeneto"
+__credits__ = ["bgeneto"]
+__license__ = "GPL"
+__maintainer__ = "Bernhard Enders"
+__email__ = "b g e n e t o @ d u c k . c o m"
+__version__ = "1.0.1"
+__modified__ = "20220915"
 
 
 class ColorPrint:
     '''Print terminal messages in colors.
-       Alternatively, print html color code to file
+       Alternatively, print html with colors to file
     '''
 
     def __init__(self, filename=None):
         # filename to log to
         self.filename = filename
+        # remove file at start
         if self.filename is not None:
             if os.path.isfile(self.filename):
                 os.remove(self.filename)
@@ -53,49 +91,58 @@ class ColorPrint:
                      }
 
     # write to terminal
-    def __write_term(self, flavor, prefix, message, end):
-        sys.stderr.write(self.term_color[flavor] + prefix +
-                         str(message) + self.term_postfix + end)
+    def __write(self, flavor, message,
+                prefix='',
+                file=sys.stdout,
+                end='\n'):
 
-    # write to file
-    def __write_html(self, flavor, prefix, message, end):
-        if not self.filename:
-            return
-        html = self.html[flavor] + prefix + \
-            str(message) + self.html_end + end
-        with open(self.filename, 'a', encoding='UTF-8') as f:
-            f.write(html)
+        # write to terminal using the built-in print function
+        print(self.term_color[flavor] +
+              prefix +
+              str(message) +
+              self.term_postfix,
+              file=file,
+              end=end)
 
-    # print methods
+        # write to file
+        if self.filename is not None:
+            html = self.html[flavor] + prefix + \
+                str(message) + self.html_end + end
+            with open(self.filename, 'a', encoding='UTF-8') as f:
+                f.write(html)
+
+    # available print methods
     def fail(self, message, end='\n'):
-        self.__write_term('fail', 'ERROR: ', message, end)
-        self.__write_html('fail', '', message, end)
+        self.__write('fail', message, prefix='ERROR: ',
+                     file=sys.stderr, end=end)
+    # alias
     error = fail
 
     def success(self, message, end='\n'):
-        self.__write_term('pass', '', message, end)
-        self.__write_html('pass', '', message, end)
+        self.__write('pass', message, end=end)
+    # alias
     ok = success
+    good = success
 
     def warn(self, message, end='\n'):
-        self.__write_term('warn', 'WARNING: ', message, end)
-        self.__write_html('warn', '', message, end)
+        self.__write('warn', message, end=end)
+    # alias
     warning = warn
 
     def info(self, message, end='\n'):
-        self.__write_term('info', '', message, end)
-        self.__write_html('info', '', message, end)
+        self.__write('info', message, end=end)
+    # alias
+    msg = info
 
     def bold(self, message, end='\n'):
-        self.__write_term('bold', '', message, end)
-        self.__write_html('bold', '', message, end)
+        self.__write('bold', message, end=end)
 
     def norm(self, message, end='\n'):
-        self.__write_term('norm', '', message, end)
-        self.__write_html('norm', '', message, end)
+        self.__write('norm', message, end=end)
+    # alias
     normal = norm
 
     def light(self, message, end='\n'):
-        self.__write_term('light', '', message, end)
-        self.__write_html('light', '', message, end)
+        self.__write('light', message, end=end)
+    # alias
     fade = light

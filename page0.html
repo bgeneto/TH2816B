@@ -20,6 +20,7 @@
         <div class="form-elements-wrapper">
             <form id="sent" action="/form" method="post">
                 <input type="hidden" name="page_id" id="page_id" value="0">
+                <input type="hidden" name="form_action" id="form_action" value="run">
                 <div class="row">
                     <div class="col-md-12">
                         <div class="card-style mb-30">
@@ -36,7 +37,9 @@
                             <div class="mb-3">
                                 <div class="button-group d-flex justify-content-left flex-wrap">
                                     <button id="exp_start" type="submit" class="btn btn-primary"
-                                        data-i18n="index.button"></button>
+                                        data-i18n="index.button"></button>&nbsp;&nbsp;
+                                    <button id="exp_end" type="button" class="btn btn-danger"
+                                        data-i18n="index.exp_end"></button>
                                 </div>
                             </div>
                         </div><!-- end card -->
@@ -75,17 +78,19 @@
 {% block modals %}
 <!-- modals -->
 <div id="modalContainer"></div>
-<div class="modal fade" id="cmdModal" tabindex="-1" aria-labelledby="cmdModalLabel" aria-hidden="true">
+<div class="modal fade" id="msgModal" tabindex="-1" aria-labelledby="msgModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="cmdModalLabel">INFO</h5>
+                <h5 class="modal-title" id="msgModalLabel">INFO</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body" data-i18n="command.sent">
+            <div class="modal-body" data-i18n="index.modal_msg"></div>
+            <div class="text-center">
+                <p style="font-style: italic;">Favor aguardar <span id="countdown-number">5</span> segundos...</p>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Close</button>
             </div>
         </div>
     </div>
@@ -125,9 +130,55 @@
 
 {% block scripts %}
 <script src="static/js/logger.js"></script>
+<script src="static/js/sweetalert2.all.min.js"></script>
 <script>
     $('#log_clear').click(function () {
         $('#devices_log').html('');
+    });
+
+    $(document).ready(function () {
+        $('#msgModal').on('shown.bs.modal', function () {
+            countDown();
+            // remove previous timeouts if it's opened more than once.
+            if (typeof myModalTimeout !== 'undefined') {
+                clearTimeout(myModalTimeout);
+            }
+            // hide it after a while
+            myModalTimeout = setTimeout(function () {
+                $('#msgModal').modal('hide');
+            }, 3000);
+        });
+
+        //countdown
+        function countDown() {
+            let countdownNumberEl = $("#countdown-number");
+            let countdown = 3;
+            countdownNumberEl.text(countdown);
+            let downloadTimer = setInterval(function () {
+                countdown--; // 5 to 0
+                countdownNumberEl.text(countdown);
+                if (countdown <= 0) {
+                    clearInterval(downloadTimer);
+                }
+            }, 1000);
+        }
+
+        $('#exp_end').click(function () {
+            Swal.fire({
+                title: 'Tem certeza...',
+                text: "Que deseja encerrar a experiência em andamento?",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#3085d6',
+                cancelButtonColor: '#d33',
+                confirmButtonText: 'Sim, parar!'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    $('#form_action').val('cancel');
+                    $("form:first").submit();
+                }
+            });
+        });
     });
 </script>
 {% end %}

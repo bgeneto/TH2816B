@@ -17,6 +17,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import copy
+import os
 import sys
 import time
 import traceback
@@ -35,8 +36,8 @@ __maintainer__ = "Bernhard Enders"
 __email__ = "b g e n e t o @ g m a i l d o t c o m"
 __copyright__ = "Copyright 2022, Bernhard Enders"
 __license__ = "GPL"
-__version__ = "0.1.13"
-__date__ = "20220914"
+__version__ = "0.1.14"
+__date__ = "20220915"
 __status__ = "Development"
 
 # global constants
@@ -58,7 +59,7 @@ class ArduinoConnection:
     '''
 
     def __init__(self, name, model, id=1):
-        cprint.info(f" Searching '{name}' device...               ")
+        cprint.info(f"Searching '{name}' device")
         self.name = name
         self.model = model
         self.id = id
@@ -73,7 +74,7 @@ class ArduinoConnection:
         wait = 3  # seconds
         ser = pymata4.Pymata4(arduino_instance_id=self.id,
                               arduino_wait=wait)
-        cprint.success(f" Device '{self.name}' connected successfully")
+        cprint.success(f"Device '{self.name}' connected successfully")
 
         return ser
 
@@ -167,7 +168,6 @@ class ArduinoConnection:
 
     def invert_onoff(self):
         '''invert ON and OFF logic for arduinos relay'''
-        cprint.warn('inverting ON and OFF relay logic')
         self.ON, self.OFF = self.OFF, self.ON
 
     def configure_pins(self, valves_pins=None, sensors_pins=None):
@@ -198,7 +198,7 @@ class ArduinoConnection:
         # global wait (if requested)
         time.sleep(wait)
 
-    def sensors_loop(self, lcr_meter, sensors_pos, sloop, vloop, rtime):
+    def sensors_loop(self, lcr_meter, sensors_pos, sloop, nvloop, rtime):
         '''loop through all the selected sensors'''
         global global_counter
 
@@ -218,7 +218,7 @@ class ArduinoConnection:
                 self.switch_onoff(self.sensors_pins, [spos])
                 # wait for the sensor to settle before taking a reading
                 time.sleep(0.5)
-                percent = round(100.0*global_counter/(nsensors*sloop*vloop))
+                percent = round(100.0*global_counter/(nsensors*sloop*nvloop))
                 cprint.normal(f'Measuring... {percent}% completed')
                 # now we empty the input buffer list
                 lcr_meter.transport.serial.flush()
@@ -243,7 +243,7 @@ class SerialConnection:
 
         self.name = 'LCR'
 
-        cprint.info(f" Searching '{self.name}' device...        ")
+        cprint.info(f"Searching '{self.name}' device")
 
         # generic device parameters
         self.ser = None
@@ -296,7 +296,7 @@ class SerialConnection:
                         f"***ERROR: Serial port ({self.name}) not ready, timed out!")
                     raise TimeoutError
 
-        cprint.success(f" Device '{self.name}' connected successfully")
+        cprint.success(f"Device '{self.name}' connected successfully")
 
     def connection_attempt(self):
         '''attempts to connect to the serial port'''
@@ -343,7 +343,6 @@ class SerialReaderProtocolLine(LineReader):
 
     def handle_line(self, line):
         """New line waiting to be processed"""
-        #sys.stdout.write(f'Line received: {repr(line)}')
         # line = str(int(round(time.time() * 1000))) + ',' + line # add timestamp
         self.received_lines.append(line)
 
@@ -408,6 +407,7 @@ def run_experiment(lcr_meter, arduinos, vloop, sloop, stime):
     valves_lst = [f'V{idx}' for idx in valves_pos]
 
     # main experiment loop
+    nvloop = vloop*len(valves_pos)
     for _ in range(vloop):
         valves_dict = {key: copy.deepcopy({})
                        for key in copy.deepcopy(valves_lst)}
@@ -416,7 +416,7 @@ def run_experiment(lcr_meter, arduinos, vloop, sloop, stime):
             valves_dict[f'V{vpos}'] = arduino_sensors.sensors_loop(lcr_meter,
                                                                    sensors_pos,
                                                                    sloop,
-                                                                   vloop,
+                                                                   nvloop,
                                                                    stime)
         # append to list only after a valve cycle is completed
         data.append(valves_dict)
