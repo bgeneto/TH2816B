@@ -465,8 +465,7 @@ if __name__ == '__main__':
 
     if settings['autoreload']:
         # auto reload tornado server after file changed
-        watched_files = (os.path.abspath(os.path.join(BASE_EXP_DIR, 'index.html')),
-                         os.path.abspath('reload'),)
+        watched_files = (os.path.abspath('reload'),)
         # enable tornado autoreload
         tornado.autoreload.start()
         # add watched file to tornado autoreload feature
