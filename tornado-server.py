@@ -382,7 +382,16 @@ class FormHandler(tornado.web.RequestHandler):
 
         # finally update index files with new contents
         self.update_output_dir()
+        
+        # force tornado reload after index.html change
+        self._reload()
 
+    def _reload(self):
+        try:
+            with open('reload', 'w') as f:
+                f.write('Change this file in order to force a tornado reload!!')
+        except:
+            pass
 
 def create_output_dir(topdir=None, subdirs=None):
     '''create data output directory'''
